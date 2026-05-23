@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "sonner";
 import { QueryProvider } from "../lib/provider/query-provider";
+import { ThemeProvider } from "@/lib/provider/them-provider";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
@@ -32,10 +33,16 @@ export default function RootLayout({
     <html lang="en" className={cn("font-sans", geist.variable)}>
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
         <QueryProvider>
-        <TooltipProvider>
-          {children}
-          <Toaster/>
-        </TooltipProvider>
+          <ThemeProvider attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+            >
+            <TooltipProvider>
+              {children}
+              <Toaster/>
+            </TooltipProvider>
+          </ThemeProvider>
         </QueryProvider>
       </body>
     </html>
