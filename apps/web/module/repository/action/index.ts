@@ -1,9 +1,9 @@
-import { createWebhook } from "@/module/github/lib/github"
+import { createWebhook, getRepositories } from "@/module/github/lib/github"
 import { auth } from "@repo/auth/server"
 import { prisma } from "@repo/db"
 import { headers } from "next/headers"
 
-export const connectReposiory = async (owner:string, repo:string, githubId:number) => {
+export const connectRepository = async (owner:string, repo:string, githubId:number) => {
   const  session = await auth.api.getSession({
     headers: await headers()
   })
@@ -38,4 +38,34 @@ export const connectReposiory = async (owner:string, repo:string, githubId:numbe
   }
 
   return webhook
+}
+
+export const fetchRepositories = async (page:number = 1, perPage:number = 10) => {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  if (!session?.user) {
+    throw new Error("Unauthorized");
+  }
+
+  const githubRepos = await getRepositories(page, perPage);
+
+  const dbRepos = await prisma.repository.findMany({
+    where:{
+      userId: session.user.id
+    }
+  });
+
+  const connectedRepoIds = new Set(
+    dbRepos.map((repo) => repo.githubId.toString())
+  );
+
+
+  return githubRepos.map((repo:any) => ({
+    ...repo,
+    isConnected: connectedRepoIds.has(repo.id.toString())
+  }));
+
+
 }
