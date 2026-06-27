@@ -181,7 +181,7 @@ export const getMonthlyActivity = async () => {
       );
 
       const monthKey =
-        monthNames[date.getMonth()];
+        monthNames[date.getMonth()]!;
 
       monthlyData[monthKey] = {
         commits: 0,
@@ -226,7 +226,7 @@ export const getMonthlyActivity = async () => {
           const date = new Date(day.date);
 
           const monthKey =
-            monthNames[date.getMonth()];
+            monthNames[date.getMonth()]!;
 
           if (monthlyData[monthKey]) {
             monthlyData[
@@ -263,7 +263,7 @@ export const getMonthlyActivity = async () => {
       const monthKey =
         monthNames[
           review.createdAt.getMonth()
-        ];
+        ]!;
 
       if (monthlyData[monthKey]) {
         monthlyData[monthKey].reviews += 1;
@@ -278,7 +278,7 @@ export const getMonthlyActivity = async () => {
         );
 
         const monthKey =
-          monthNames[date.getMonth()];
+          monthNames[date.getMonth()]!;
 
         if (monthlyData[monthKey]) {
           monthlyData[monthKey].prs += 1;
