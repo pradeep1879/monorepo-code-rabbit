@@ -16,7 +16,7 @@ import {
   LogOut,
 } from "lucide-react";
 
-import { useTheme } from "next-themes";
+import { useTheme } from "@/lib/provider/them-provider";
 
 import { signOut, useSession } from "@repo/auth/client";
 

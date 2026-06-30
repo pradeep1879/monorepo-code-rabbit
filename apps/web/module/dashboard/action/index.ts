@@ -33,7 +33,7 @@ export const getContributionStats = async () => {
     }
 
     const token = await getGithubAccesstoken();
-    
+
     const octokit = new Octokit({
       auth:token
     });
@@ -47,17 +47,17 @@ export const getContributionStats = async () => {
     }
 
     const contributions = calendar.weeks.flatMap(
-      (week:any) => 
-        week.contributionDays.map((day:any) => ({
-          day: day.date,
-          count: day.count,
+      (week) =>
+        week.contributionDays.map((day) => ({
+          date: day.date,
+          count: day.contributionCount,
           level: Math.min(
             4,
             Math.floor(day.contributionCount / 3)
           ),
         }))
     );
-    
+
     return contributions
   } catch (error) {
      console.error(
@@ -72,6 +72,7 @@ export const getDashboardStats = async () => {
     const session = await auth.api.getSession({
       headers: await headers(),
     })
+    console.log(session,"session from get dashboard stats")
     if(!session?.user){
       throw new Error("Unauthorized");
     }
@@ -85,7 +86,7 @@ export const getDashboardStats = async () => {
 
     //TODO: Replace with real db values
 
-    const totalRepo = 30;
+    const totalRepo = 20
     const totalReviews = 44;
 
 
@@ -116,8 +117,8 @@ export const getDashboardStats = async () => {
      console.error(
       "Dashbord Stats Error:",
       error
-    ); 
-    
+    );
+
     return {
       totalCommits: 0,
       totalPrs: 0,
@@ -137,8 +138,9 @@ export const getMonthlyActivity = async () => {
     if (!session?.user) {
       throw new Error("Unauthorized");
     }
-
     const token = await getGithubAccesstoken()
+    console.log(token)
+
 
     const octokit = new Octokit({
       auth: token,
@@ -220,9 +222,9 @@ export const getMonthlyActivity = async () => {
     }
 
     // commits
-    calendar.weeks.forEach((week: any) => {
+    calendar.weeks.forEach((week) => {
       week.contributionDays.forEach(
-        (day: any) => {
+        (day) => {
           const date = new Date(day.date);
 
           const monthKey =
@@ -272,7 +274,7 @@ export const getMonthlyActivity = async () => {
 
     // PRs
     prsResponse.data.items.forEach(
-      (pr: any) => {
+      (pr: { created_at: string }) => {
         const date = new Date(
           pr.created_at
         );

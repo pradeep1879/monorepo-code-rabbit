@@ -1,3 +1,4 @@
+"use server"
 import { auth } from "@repo/auth/server"
 import { prisma } from "@repo/db";
 import { headers } from "next/headers"
@@ -6,27 +7,28 @@ import { ContributionCalendar, ContributionResponse } from "@repo/types"
 
 export const getGithubAccesstoken = async () => {
   const session = await auth.api.getSession({
-    headers: await headers()
+    headers: await headers(),
   });
 
-  if(session?.user){
-    throw new Error("Unauthorized")
+  if (!session?.user) {
+    throw new Error("Unauthorized");
   }
 
   const account = await prisma.account.findFirst({
-    where:{
-      id: session?.user.id,
-      provider: 'github'
-    }
+    where: {
+      userId: session.user.id,
+      providerId: "github",
+    },
   });
 
-  if(!account?.accessToken){
-    throw new Error("No access token found");
+  if (!account?.accessToken) {
+    throw new Error(
+      "No GitHub access token found"
+    );
   }
 
-
   return account.accessToken;
-}
+};
 
 
 export const getRepositories = async (page: number = 1, perPage: number = 10) => {
@@ -45,7 +47,7 @@ export const getRepositories = async (page: number = 1, perPage: number = 10) =>
     page: page,
   });
 
-
+console.log("getRepositories data",data);
   return data
 }
 
@@ -96,36 +98,37 @@ export const fetchUserContribution = async (
   }
 };
 
-export const createWebhook = async (owner:string, repo:string) => {
-  const token = await getGithubAccesstoken();
-  const octokit = new Octokit({
-    auth: token
-  });
+export const createWebhook = async (owner: string, repo: string) => {
+  try {
+    const token = await getGithubAccesstoken();
 
-  const webHookUrl = `${process.env.BETTER_AUTH_URL}/api/webhook/github`
+    const octokit = new Octokit({
+      auth: token,
+    });
+      console.log("BETTER_AUTH_URL =", process.env.BETTER_AUTH_URL);
 
-  const {data:hooks} = await octokit.rest.repos.listWebhooks({
-    owner,
-    repo
-  })
+      const webHookUrl = `${process.env.BETTER_AUTH_URL}/api/webhook/github`;
 
-  const existingWebhook = hooks.find(hook => hook.config.url === webHookUrl)
-  if(existingWebhook){
-    return existingWebhook
+      console.log("Webhook URL =", webHookUrl);
+
+
+
+    const { data } = await octokit.rest.repos.createWebhook({
+      owner,
+      repo,
+      config: {
+        url: webHookUrl,
+        content_type: "json",
+      },
+      events: ["pull_request"],
+    });
+
+    return data;
+  } catch (err) {
+    console.error(err);
+    throw err;
   }
-
-  const { data } = await octokit.rest.repos.createWebhook({
-    owner,
-    repo,
-    config:{
-      url: webHookUrl,
-      content_type: "json"
-    },
-    events: ["pull_request"]
-  })
-
-  return data
-}
+};
 
 
 
@@ -143,7 +146,7 @@ export const deleteWebhook = async (owner:string, repo:string) =>{
     owner,
     repo
   })
-  
+
   const hookToDelete = hooks.find(hook => hook.config.url === webHookUrl);
   if(hookToDelete){
     await octokit.rest.repos.deleteWebhook({
@@ -153,7 +156,7 @@ export const deleteWebhook = async (owner:string, repo:string) =>{
     })
     return true
   }
- } catch (error) {
+ } catch {
   return false
  }
 }

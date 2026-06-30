@@ -1,9 +1,10 @@
+"use server"
 import { createWebhook, getRepositories } from "@/module/github/lib/github"
 import { auth } from "@repo/auth/server"
 import { prisma } from "@repo/db"
 import { headers } from "next/headers"
 
-export const connectRepository = async (owner:string, repo:string, githubId:number) => {
+export const connectRepository = async (owner:string, repo:string, githubId:number | string) => {
   const  session = await auth.api.getSession({
     headers: await headers()
   })
@@ -29,12 +30,6 @@ export const connectRepository = async (owner:string, repo:string, githubId:numb
     });
     // increase repo count for usage tracking
 
-    // trigger repository indexing for RAG
-    try {
-      
-    } catch (error) {
-      
-    }
   }
 
   return webhook
@@ -62,7 +57,7 @@ export const fetchRepositories = async (page:number = 1, perPage:number = 10) =>
   );
 
 
-  return githubRepos.map((repo:any) => ({
+  return githubRepos.map((repo) => ({
     ...repo,
     isConnected: connectedRepoIds.has(repo.id.toString())
   }));

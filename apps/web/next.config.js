@@ -12,6 +12,7 @@ dotenv.config({
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   transpilePackages: ["@repo/db"],
+  allowedDevOrigins: ['astrology-palace-proofread.ngrok-free.dev']
 };
 
 export default nextConfig;

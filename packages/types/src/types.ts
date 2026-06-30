@@ -17,3 +17,16 @@ export interface ContributionResponse {
     };
   };
 }
+
+
+export interface Repository {
+ id: number | string;
+ name: string;
+ full_name: string;
+ description: string,
+ html_url: string,
+ stargazers_count: number;
+ language: string | null;
+ topics: string[];
+isConnected?: boolean;
+}
