@@ -15,5 +15,5 @@ export const auth = betterAuth({
         scope: ["repo"]
       }
     }),
-    trustedOrigins: ["http://localhost:3000"]
+    trustedOrigins: ["http://localhost:3001", "https://astrology-palace-proofread.ngrok-free.dev"]
 });
