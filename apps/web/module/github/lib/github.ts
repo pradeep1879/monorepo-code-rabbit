@@ -130,9 +130,6 @@ export const createWebhook = async (owner: string, repo: string) => {
   }
 };
 
-
-
-
 export const deleteWebhook = async (owner:string, repo:string) =>{
  const token = await getGithubAccesstoken();
   const octokit = new Octokit({
@@ -159,4 +156,85 @@ export const deleteWebhook = async (owner:string, repo:string) =>{
  } catch {
   return false
  }
+}
+
+
+export const getRepoFileContents = async(
+    token:string,
+    owner:string,
+    repo:string,
+    path: string = ""
+):Promise<{path:string, content:string}[]> => {
+  const octokit = new Octokit({auth:token});
+  const {data} = await octokit.rest.repos.getContent({
+    owner,
+    repo,
+    path
+  })
+
+
+  if(!Array.isArray(data)){
+    //It's a file
+    if(data.type === "file" && data.content){
+      return [{
+        path: data.path,
+        content: Buffer.from(data.content, "base64").toString("utf8")
+      }]
+    }
+
+    return [];
+  }
+
+  let files: {path:string, content: string}[] = [];
+
+  for(const item of data){
+    if (item.type === "file") {
+
+  // Skip unnecessary files FIRST
+        if (
+          item.path.match(
+            /\.(png|jpg|jpeg|svg|gif|ico|pdf|zip|tar|gz|map|lock)$/i
+          ) ||
+          item.path.startsWith("dist/") ||
+          item.path.includes("node_modules") ||
+          item.path.includes(".next") ||
+          item.path.includes("build/")
+        ) {
+          continue;
+        }
+
+        const { data: fileData } =
+          await octokit.rest.repos.getContent({
+            owner,
+            repo,
+            path: item.path,
+          });
+
+        if (
+          !Array.isArray(fileData) &&
+          fileData.type === "file" &&
+          fileData.content
+        ) {
+          files.push({
+            path: item.path,
+            content: Buffer.from(
+              fileData.content,
+              "base64"
+            ).toString("utf8"),
+          });
+        }
+      }
+    else if (item.type === "dir") {
+      const subFiles = await getRepoFileContents(
+        token,
+        owner,
+        repo,
+        item.path
+      );
+
+      files = files.concat(subFiles);
+    }
+  }
+
+  return files
 }

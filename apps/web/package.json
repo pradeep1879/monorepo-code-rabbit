@@ -13,6 +13,7 @@
   "dependencies": {
     "@ai-sdk/google": "^4.0.41",
     "@base-ui/react": "^1.5.0",
+    "@huggingface/inference": "^4.13.25",
     "@pinecone-database/pinecone": "^8.2.0",
     "@repo/auth": "workspace:*",
     "@repo/db": "workspace:*",

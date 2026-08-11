@@ -1,4 +1,5 @@
 "use server"
+import { inngest } from "@/inngest/client"
 import { createWebhook, getRepositories } from "@/module/github/lib/github"
 import { auth } from "@repo/auth/server"
 import { prisma } from "@repo/db"
@@ -29,6 +30,20 @@ export const connectRepository = async (owner:string, repo:string, githubId:numb
      }     
     });
     // increase repo count for usage tracking
+    // trigger repository indexing for RAG(fire and forget)
+
+    try {
+      await inngest.send({
+        name: "repository.connected",
+        data:{
+          owner,
+          repo,
+          userId: session.user.id
+        }
+      })
+    } catch (error) {
+      console.log("Failed to trigger repo indexing:", error)
+    }
 
   }
 
