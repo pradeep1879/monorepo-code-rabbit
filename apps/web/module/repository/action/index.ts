@@ -44,7 +44,7 @@ export const connectRepository = async (owner:string, repo:string, githubId:numb
     } catch (error) {
       console.log("Failed to trigger repo indexing:", error)
     }
-
+    console.log("Repository connected successfully");
   }
 
   return webhook

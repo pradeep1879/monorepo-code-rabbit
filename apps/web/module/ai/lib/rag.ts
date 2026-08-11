@@ -20,6 +20,7 @@ export const generateEmbedding = async (
   return embedding as number[];
 };
 
+
 export const indexCodebase = async (
   repoId: string,
   files: { path: string; content: string }[]
