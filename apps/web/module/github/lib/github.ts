@@ -238,3 +238,63 @@ export const getRepoFileContents = async(
 
   return files
 }
+
+
+export const getPullRequestDiff = async (
+  token: string,
+  owner: string,
+  repo: string,
+  prNumber: number
+) => {
+  const octokit = new Octokit({
+    auth: token,
+  });
+
+  // Fetch PR metadata
+  const { data: pr } =
+    await octokit.rest.pulls.get({
+      owner,
+      repo,
+      pull_number: prNumber,
+    });
+
+  // Fetch diff
+  const diffResponse = await octokit.request(
+      "GET /repos/{owner}/{repo}/pulls/{pull_number}",
+      {
+        owner,
+        repo,
+        pull_number: prNumber,
+
+        headers: {
+          accept:
+            "application/vnd.github.v3.diff",
+        },
+      }
+    );
+
+  const diff = diffResponse.data as unknown as string;
+    return {
+        diff,
+        title: pr.title,
+        description: pr.body || "",
+      };  
+};
+
+
+export const postReviewComment = async (
+  token:string,
+  owner:string,
+  repo:string, 
+  prNumber:number, 
+  review:string
+) => {
+  const octokit = new Octokit({auth:token});
+
+  await octokit.rest.issues.createComment({
+    owner,
+    repo,
+    issue_number: prNumber,
+    body: `## AI Code Review\n\n${review}\n\n---\n*Powered by CodeRabbit`
+  })
+}
