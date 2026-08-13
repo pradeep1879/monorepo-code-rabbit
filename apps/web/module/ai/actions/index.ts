@@ -1,6 +1,7 @@
 "use server";
 
 import { inngest } from "@/inngest/client";
+import { canCreateReview, incrementReviewCount } from "@/module/payment/lib/subscription";
 import { prisma } from "@repo/db";
 
 export const reviewPullRequest = async (
@@ -31,6 +32,11 @@ export const reviewPullRequest = async (
       throw new Error(
         `Repository ${owner}/${repo} not found in database`
       );
+    }
+
+    const canReview = await canCreateReview(repository.user.id, repository.id);
+    if(!canReview){
+      throw new Error("Review limit reached for this repository. Please upgrade your plan.")
     }
 
     const githubAccount =
@@ -64,6 +70,8 @@ export const reviewPullRequest = async (
       "Inngest event sent successfully:",
       result
     );
+    
+    await incrementReviewCount(repository.user.id, repository.id);
 
     return {
       success: true,

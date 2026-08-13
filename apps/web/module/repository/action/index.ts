@@ -1,6 +1,7 @@
 "use server"
 import { inngest } from "@/inngest/client"
 import { createWebhook, getRepositories } from "@/module/github/lib/github"
+import { canConnectRepository, incrementRepositoryCount } from "@/module/payment/lib/subscription"
 import { auth } from "@repo/auth/server"
 import { prisma } from "@repo/db"
 import { headers } from "next/headers"
@@ -15,6 +16,10 @@ export const connectRepository = async (owner:string, repo:string, githubId:numb
   }
 
   // chech if user can connect repository
+  const canConnect = await canConnectRepository(session.user.id);
+  if(!canConnect){
+    throw new Error("Repository limited reached. Please upgrade your plan");
+  }
 
   const webhook = await createWebhook(owner, repo)
 
@@ -29,9 +34,11 @@ export const connectRepository = async (owner:string, repo:string, githubId:numb
       userId: session.user.id
      }     
     });
-    // increase repo count for usage tracking
-    // trigger repository indexing for RAG(fire and forget)
 
+    // increase repo count for usage tracking
+    await incrementRepositoryCount(session.user.id);
+
+    // trigger repository indexing for RAG(fire and forget)
     try {
       await inngest.send({
         name: "repository.connected",
