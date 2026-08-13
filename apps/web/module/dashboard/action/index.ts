@@ -139,7 +139,7 @@ export const getMonthlyActivity = async () => {
       throw new Error("Unauthorized");
     }
     const token = await getGithubAccesstoken()
-    console.log(token)
+
 
 
     const octokit = new Octokit({
