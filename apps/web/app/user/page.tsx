@@ -7,7 +7,7 @@ const Page = () => {
   const handleClick = async () => {
     const users = await getUser()
 
-    console.log(users)
+
   }
 
   return (
