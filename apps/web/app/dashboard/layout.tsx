@@ -2,7 +2,7 @@ import React from 'react'
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 
 import { Separator } from '@/components/ui/separator';
-import AppSideBar from '@/features/dashboardui/AppSideBar';
+import AppSideBar from '@/DashboardUI/dashboardui/AppSideBar';
 import { requireAuth } from '@/lib/auth/require-auth';
 
 
