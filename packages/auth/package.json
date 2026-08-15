@@ -15,6 +15,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@polar-sh/better-auth": "^1.8.4",
+    "@polar-sh/sdk": "^0.49.0",
     "@repo/db": "workspace:*",
     "better-auth": "^1.6.11"
   }
