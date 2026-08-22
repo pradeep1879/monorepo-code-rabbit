@@ -72,10 +72,29 @@ model Review {
   updatedAt       DateTime      @updatedAt
 
   repository      Repository    @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  conversations   Conversation[]
 
   @@index([repositoryId])
   @@map("review")
 
+}
+model Conversation {
+  id                String      @id     @default(uuid())
+  reviewId          String
+
+  message           String       @db.Text
+  role              ConversationRole
+
+  review            Review    @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  createdAt         DateTime      @default(now())
+
+  @@index([reviewId, createdAt])
+  @@map("chat")
+}
+
+enum ConversationRole {
+  USER
+  ASSISTANT
 }
 
 model UserUsage {
