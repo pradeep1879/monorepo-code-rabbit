@@ -177,6 +177,23 @@ export type IntWithAggregatesFilter<$PrismaModel = never> = {
   _max?: Prisma.NestedIntFilter<$PrismaModel>
 }
 
+export type EnumConversationRoleFilter<$PrismaModel = never> = {
+  equals?: $Enums.ConversationRole | Prisma.EnumConversationRoleFieldRefInput<$PrismaModel>
+  in?: $Enums.ConversationRole[] | Prisma.ListEnumConversationRoleFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ConversationRole[] | Prisma.ListEnumConversationRoleFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumConversationRoleFilter<$PrismaModel> | $Enums.ConversationRole
+}
+
+export type EnumConversationRoleWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.ConversationRole | Prisma.EnumConversationRoleFieldRefInput<$PrismaModel>
+  in?: $Enums.ConversationRole[] | Prisma.ListEnumConversationRoleFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ConversationRole[] | Prisma.ListEnumConversationRoleFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumConversationRoleWithAggregatesFilter<$PrismaModel> | $Enums.ConversationRole
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumConversationRoleFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumConversationRoleFilter<$PrismaModel>
+}
+
 export type JsonFilter<$PrismaModel = never> =
 | Prisma.PatchUndefined<
     Prisma.Either<Required<JsonFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonFilterBase<$PrismaModel>>, 'path'>>,
@@ -427,6 +444,23 @@ export type NestedIntWithAggregatesFilter<$PrismaModel = never> = {
   _sum?: Prisma.NestedIntFilter<$PrismaModel>
   _min?: Prisma.NestedIntFilter<$PrismaModel>
   _max?: Prisma.NestedIntFilter<$PrismaModel>
+}
+
+export type NestedEnumConversationRoleFilter<$PrismaModel = never> = {
+  equals?: $Enums.ConversationRole | Prisma.EnumConversationRoleFieldRefInput<$PrismaModel>
+  in?: $Enums.ConversationRole[] | Prisma.ListEnumConversationRoleFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ConversationRole[] | Prisma.ListEnumConversationRoleFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumConversationRoleFilter<$PrismaModel> | $Enums.ConversationRole
+}
+
+export type NestedEnumConversationRoleWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.ConversationRole | Prisma.EnumConversationRoleFieldRefInput<$PrismaModel>
+  in?: $Enums.ConversationRole[] | Prisma.ListEnumConversationRoleFieldRefInput<$PrismaModel>
+  notIn?: $Enums.ConversationRole[] | Prisma.ListEnumConversationRoleFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumConversationRoleWithAggregatesFilter<$PrismaModel> | $Enums.ConversationRole
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumConversationRoleFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumConversationRoleFilter<$PrismaModel>
 }
 
 export type NestedJsonFilter<$PrismaModel = never> =

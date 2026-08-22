@@ -57,6 +57,11 @@ export type Repository = Prisma.RepositoryModel
  */
 export type Review = Prisma.ReviewModel
 /**
+ * Model ConversationMessage
+ * 
+ */
+export type ConversationMessage = Prisma.ConversationMessageModel
+/**
  * Model UserUsage
  * 
  */

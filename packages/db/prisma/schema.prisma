@@ -61,24 +61,24 @@ model Repository {
 
 
 model Review {
-  id              String        @id       @default(cuid())
-  repositoryId    String
-  prNumber        Int
-  prTitle         String
-  prUrl           String
-  review          String        @db.Text
-  status          String        @default("completed")
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  id                     String        @id       @default(cuid())
+  repositoryId           String
+  prNumber               Int
+  prTitle                String
+  prUrl                  String
+  review                 String        @db.Text
+  status                 String        @default("completed")
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
 
-  repository      Repository    @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
-  conversations   Conversation[]
+  repository             Repository    @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  conversationMessages   ConversationMessage[]
 
   @@index([repositoryId])
   @@map("review")
 
 }
-model Conversation {
+model ConversationMessage {
   id                String      @id     @default(uuid())
   reviewId          String
 
@@ -89,7 +89,7 @@ model Conversation {
   createdAt         DateTime      @default(now())
 
   @@index([reviewId, createdAt])
-  @@map("chat")
+  @@map("conversation_message")
 }
 
 enum ConversationRole {
