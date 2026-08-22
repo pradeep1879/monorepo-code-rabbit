@@ -1,7 +1,19 @@
-"use client"
-import { useGetReview } from '@/hooks/reviewHooks/usegeReview'
-import { CheckCircle2, Clock3, ExternalLink, GitBranchIcon, GitPullRequest, Loader2, LoaderPinwheel, Sparkles, XCircle } from 'lucide-react';
-import React from 'react'
+"use client";
+import { useGetReview } from "@/hooks/reviewHooks/usegeReview";
+import {
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  Clock3,
+  ExternalLink,
+  GitBranchIcon,
+  GitPullRequest,
+  Loader2,
+  LoaderPinwheel,
+  Sparkles,
+  XCircle,
+} from "lucide-react";
+import React, { useState } from "react";
 import {
   Card,
   CardContent,
@@ -10,45 +22,28 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 
-import {
-  Badge,
-} from "@/components/ui/badge";
+import { Badge } from "@/components/ui/badge";
 
-import {
-  Skeleton,
-} from "@/components/ui/skeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 
-import {
-  ScrollArea,
-} from "@/components/ui/scroll-area";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
-import {
-  Avatar,
-  AvatarFallback,
-} from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
-import {
-  Separator,
-} from "@/components/ui/separator"
-import { formatDistanceToNow } from 'date-fns';
+import { Separator } from "@/components/ui/separator";
+import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
-
-
+import { cn } from "@/lib/utils";
 
 const ReviewPage = () => {
+  const [expand, setExpand] = useState(false);
+  const { data, isLoading } = useGetReview();
 
-  const {data, isLoading} = useGetReview();
-
-  const getStatusBadge = (
-    status: string
-  ) => {
+  const getStatusBadge = (status: string) => {
     switch (status) {
       case "completed":
         return (
-          <Badge
-            variant="secondary"
-            className="gap-1"
-          >
+          <Badge variant="secondary" className="gap-1">
             <CheckCircle2 className="h-3 w-3" />
             Completed
           </Badge>
@@ -56,10 +51,7 @@ const ReviewPage = () => {
 
       case "failed":
         return (
-          <Badge
-            variant="destructive"
-            className="gap-1"
-          >
+          <Badge variant="destructive" className="gap-1">
             <XCircle className="h-3 w-3" />
             Failed
           </Badge>
@@ -80,176 +72,163 @@ const ReviewPage = () => {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight">
-            Review History
-          </h1>
+          <h1 className="text-3xl font-bold tracking-tight">Review History</h1>
 
           <p className="text-muted-foreground">
-            View all AI generated pull request
-            reviews.
+            View all AI generated pull request reviews.
           </p>
         </div>
 
         <div className="hidden md:flex items-center gap-2 rounded-xl border px-4 py-2 bg-muted/40">
           <Sparkles className="h-4 w-4 text-primary" />
 
-          <span className="text-sm font-medium">
-            AI Powered Reviews
-          </span>
+          <span className="text-sm font-medium">AI Powered Reviews</span>
         </div>
       </div>
 
       {/* Loading */}
       {isLoading && (
         <div className="grid gap-5">
-          {Array.from({ length: 5 }).map(
-            (_, i) => (
-              <Card
-                key={i}
-                className="overflow-hidden"
-              >
-                <CardHeader className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Skeleton className="h-6 w-56" />
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Card key={i} className="overflow-hidden">
+              <CardHeader className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Skeleton className="h-6 w-56" />
 
-                    <Skeleton className="h-6 w-24 rounded-full" />
-                  </div>
+                  <Skeleton className="h-6 w-24 rounded-full" />
+                </div>
 
-                  <Skeleton className="h-4 w-72" />
-                </CardHeader>
+                <Skeleton className="h-4 w-72" />
+              </CardHeader>
 
-                <CardContent className="space-y-4">
-                  <Skeleton className="h-4 w-full" />
+              <CardContent className="space-y-4">
+                <Skeleton className="h-4 w-full" />
 
-                  <Skeleton className="h-4 w-[90%]" />
+                <Skeleton className="h-4 w-[90%]" />
 
-                  <Skeleton className="h-4 w-[80%]" />
-                </CardContent>
-              </Card>
-            )
-          )}
+                <Skeleton className="h-4 w-[80%]" />
+              </CardContent>
+            </Card>
+          ))}
         </div>
       )}
 
       {/* Empty */}
-      {!isLoading &&
-        data?.length === 0 && (
-          <Card className="border-dashed">
-            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-              <GitPullRequest className="mb-4 h-12 w-12 text-muted-foreground" />
+      {!isLoading && data?.length === 0 && (
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+            <GitPullRequest className="mb-4 h-12 w-12 text-muted-foreground" />
 
-              <h3 className="text-lg font-semibold">
-                No reviews yet
-              </h3>
+            <h3 className="text-lg font-semibold">No reviews yet</h3>
 
-              <p className="mt-2 max-w-md text-sm text-muted-foreground">
-                Connect a repository and open a
-                pull request to generate your
-                first AI review.
-              </p>
-            </CardContent>
-          </Card>
-        )}
+            <p className="mt-2 max-w-md text-sm text-muted-foreground">
+              Connect a repository and open a pull request to generate your
+              first AI review.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Reviews */}
-      {!isLoading &&
-        data &&
-        data.length > 0 && (
-          <ScrollArea className="h-[calc(100vh-220px)] pr-4">
-            <div className="space-y-5">
-              {data.map((review) => (
-                <Card
-                  key={review.id}
-                  className="group overflow-hidden transition-all hover:border-primary/40 hover:shadow-lg"
-                >
-                  <CardHeader className="space-y-4">
-                    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Avatar className="h-8 w-8">
-                            <AvatarFallback>
-                              <GitBranchIcon className="h-4 w-4" />
-                            </AvatarFallback>
-                          </Avatar>
+      {!isLoading && data && data.length > 0 && (
+        <ScrollArea className="h-[calc(100vh-220px)] pr-4">
+          <div className="space-y-5">
+            {data.map((review) => (
+              <Card
+                key={review.id}
+                className="group overflow-hidden transition-all hover:border-primary/40 hover:shadow-lg"
+              >
+                <CardHeader className="space-y-4">
+                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-8 w-8">
+                          <AvatarFallback>
+                            <GitBranchIcon className="h-4 w-4" />
+                          </AvatarFallback>
+                        </Avatar>
 
-                          <div>
-                            <CardTitle className="text-lg">
-                              PR #
-                              {review.prNumber}{" "}
-                              —{" "}
-                              {
-                                review.prTitle
-                              }
-                            </CardTitle>
+                        <div>
+                          <CardTitle className="text-lg">
+                            PR #{review.prNumber} — {review.prTitle}
+                          </CardTitle>
 
-                            <CardDescription className="flex items-center gap-2 pt-1">
-                              <GitBranchIcon className="h-3.5 w-3.5" />
+                          <CardDescription className="flex items-center gap-2 pt-1">
+                            <GitBranchIcon className="h-3.5 w-3.5" />
 
-                              {
-                                review
-                                  .repository
-                                  .fullName
-                              }
-                            </CardDescription>
-                          </div>
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <Clock3 className="h-3.5 w-3.5" />
-
-                            {formatDistanceToNow(
-                              new Date(
-                                review.createdAt
-                              ),
-                              {
-                                addSuffix: true,
-                              }
-                            )}
-                          </div>
+                            {review.repository.fullName}
+                          </CardDescription>
                         </div>
                       </div>
 
-                      {getStatusBadge(
-                        review.status
-                      )}
+                      <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <Clock3 className="h-3.5 w-3.5" />
+
+                          {formatDistanceToNow(new Date(review.createdAt), {
+                            addSuffix: true,
+                          })}
+                        </div>
+                      </div>
                     </div>
-                  </CardHeader>
 
-                  <Separator />
+                    {getStatusBadge(review.status)}
+                  </div>
+                </CardHeader>
 
-                  <CardContent className="space-y-5 pt-6">
-                    <div className="rounded-xl border bg-muted/30 p-4">
-                      <p className="line-clamp-6 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
+                <Separator />
+
+                <CardContent className="space-y-5 pt-6">
+                  <div className="rounded-xl border bg-muted/30 p-4">
+                    <div
+                      className={cn(
+                        "overflow-hidden transition-all duration-500 ease-in-out",
+                        expand ? "max-h-250" : "max-h-36",
+                      )}
+                    >
+                      <p className="whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
                         {review.review}
                       </p>
                     </div>
 
-                    <div className="flex items-center justify-between">
-                      <Link
-                        href={review.prUrl}
-                        target="_blank"
-                        className="inline-flex items-center gap-2 text-sm font-medium text-primary transition-opacity hover:opacity-80"
+                    <div className="mt-3 flex justify-center">
+                      <button
+                        onClick={() => setExpand((prev) => !prev)}
+                        className="group inline-flex items-center gap-1.5 rounded-full border bg-background px-3.5 py-1.5 text-sm font-medium text-muted-foreground shadow-sm transition-all duration-200 hover:border-purple-300 hover:bg-purple-50 hover:text-purple-600 dark:hover:bg-purple-950/30"
                       >
-                        View Pull Request
-                        <ExternalLink className="h-4 w-4" />
-                      </Link>
+                        {expand ? "Show less" : "Show more"}
 
-                      <Badge
-                        variant="outline"
-                        className="rounded-full"
-                      >
-                        AI Review
-                      </Badge>
+                        {expand ? (
+                          <ChevronUp className="h-4 w-4 transition-transform duration-300" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 transition-transform duration-300" />
+                        )}
+                      </button>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </ScrollArea>
-        )}
-    </div>
-  )
-}
+                  </div>
 
-export default ReviewPage
+                  <div className="flex items-center justify-between">
+                    <Link
+                      href={review.prUrl}
+                      target="_blank"
+                      className="inline-flex items-center gap-2 text-sm font-medium text-primary transition-opacity hover:opacity-80"
+                    >
+                      View Pull Request
+                      <ExternalLink className="h-4 w-4" />
+                    </Link>
+
+                    <Badge variant="outline" className="rounded-full">
+                      AI Review
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </ScrollArea>
+      )}
+    </div>
+  );
+};
+
+export default ReviewPage;
