@@ -1,0 +1,48 @@
+# Git
+.git
+.gitignore
+
+# Dependencies
+node_modules
+**/node_modules
+
+# Next.js / build output
+.next
+**/.next
+out
+**/out
+dist
+**/dist
+build
+**/build
+
+# Turbo
+.turbo
+**/.turbo
+
+# Environment / secrets
+.env
+.env.*
+**/.env
+**/.env.*
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# IDE
+.vscode
+.idea
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+docker-compose*.yaml
+
+# Documentation that isn't required for the build
+README.md

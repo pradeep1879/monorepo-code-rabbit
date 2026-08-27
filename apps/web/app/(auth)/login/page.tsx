@@ -1,4 +1,4 @@
-import GithubLoginUI from '@/features/auth/components/GithubLoginUI'
+import GithubLoginUI from '@/DashboardUI/auth/components/GithubLoginUI'
 import { requireUnAuth } from '@/lib/auth/require-unauth'
 import React from 'react'
 

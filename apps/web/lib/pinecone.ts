@@ -1,7 +1,25 @@
-import { Pinecone } from "@pinecone-database/pinecone"
+import { Pinecone } from "@pinecone-database/pinecone";
 
-export const pinecone = new Pinecone({
-  apiKey: process.env.PINECONE_DB_API_KEY!
-})
+let pinecone: Pinecone | null = null;
 
-export const pineconeIndex = pinecone.Index("code-rabbit-monorepo-vector-embadding");
+export function getPinecone() {
+  if (!pinecone) {
+    const apiKey = process.env.PINECONE_DB_API_KEY;
+
+    if (!apiKey) {
+      throw new Error("PINECONE_DB_API_KEY is not configured");
+    }
+
+    pinecone = new Pinecone({
+      apiKey,
+    });
+  }
+
+  return pinecone;
+}
+
+export function getPineconeIndex() {
+  return getPinecone().Index(
+    "code-rabbit-monorepo-vector-embadding"
+  );
+}

@@ -1,5 +1,5 @@
 
-import { pineconeIndex } from "@/lib/pinecone";
+import { getPineconeIndex } from "@/lib/pinecone";
 
 import { HfInference } from "@huggingface/inference";
 
@@ -76,17 +76,11 @@ export const indexCodebase = async (
   if (vector.length > 0) {
     const batchSize = 100;
 
-    for (
-      let i = 0;
-      i < vector.length;
-      i += batchSize
-    ) {
-      const batch = vector.slice(
-        i,
-        i + batchSize
-      );
+    for (let i = 0; i < vector.length; i += batchSize) {
+      const batch = vector.slice(i,i + batchSize);
 
       try {
+        const pineconeIndex = getPineconeIndex()
         await pineconeIndex.upsert({
           records: batch,
         });
@@ -110,6 +104,8 @@ export const indexCodebase = async (
 
 export const retrieveContext = async (query:string, repoId:string, topK:number = 5) => {
   const embedding  = await generateEmbedding(query);
+
+  const pineconeIndex = getPineconeIndex();
 
   const results = await pineconeIndex.query({
     vector: embedding,

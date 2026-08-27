@@ -11,7 +11,12 @@ dotenv.config({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: "standalone",
+
+  outputFileTracingRoot: path.join(__dirname, "../../"),
+
   transpilePackages: ["@repo/db"],
+
   allowedDevOrigins: ['astrology-palace-proofread.ngrok-free.dev']
 };
 
