@@ -36,7 +36,9 @@ export async function POST(req: NextRequest) {
           await reviewPullRequest(
             owner,
             repoName,
-            prNumber
+            prNumber,
+            body.pull_request?.title,
+            body.pull_request?.html_url,
           );
 
           console.log(
