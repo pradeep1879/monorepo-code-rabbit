@@ -37,8 +37,19 @@ export const generateReview = inngest.createFunction(
         repo,
         prNumber,
         userId,
+        reviewId,
       } = event.data;
 
+      if (reviewId) {
+        await step.run("mark-reviewing", async () => {
+          await prisma.review.updateMany({
+            where: { id: reviewId },
+            data: { status: "processing" },
+          });
+        });
+      }
+
+      try {
       // Fetch PR data
       const {
         diff,
@@ -168,17 +179,28 @@ export const generateReview = inngest.createFunction(
             });
 
           if (repository) {
-            await prisma.review.create({
-              data: {
-                repositoryId:
-                  repository.id,
-                prNumber,
-                prTitle: title,
-                prUrl: `https://github.com/${owner}/${repo}/pull/${prNumber}`,
-                review,
-                status: "completed",
-              },
-            });
+            if (reviewId) {
+              await prisma.review.update({
+                where: { id: reviewId },
+                data: {
+                  prTitle: title,
+                  prUrl: `https://github.com/${owner}/${repo}/pull/${prNumber}`,
+                  review,
+                  status: "completed",
+                },
+              });
+            } else {
+              await prisma.review.create({
+                data: {
+                  repositoryId: repository.id,
+                  prNumber,
+                  prTitle: title,
+                  prUrl: `https://github.com/${owner}/${repo}/pull/${prNumber}`,
+                  review,
+                  status: "completed",
+                },
+              });
+            }
           }
         }
       );
@@ -186,5 +208,14 @@ export const generateReview = inngest.createFunction(
       return {
         success: true,
       };
+      } catch (error) {
+        if (reviewId) {
+          await prisma.review.updateMany({
+            where: { id: reviewId },
+            data: { status: "failed" },
+          });
+        }
+        throw error;
+      }
     }
 );
