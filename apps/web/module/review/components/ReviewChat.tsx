@@ -58,7 +58,7 @@ export function ReviewChat({ reviewId }: { reviewId: string }) {
       </SheetTrigger>
       <SheetContent
         side="right"
-        className={cn("w-full max-w-none gap-0 p-0 data-[side=right]:w-full sm:data-[side=right]:w-[var(--chat-panel-width)] sm:data-[side=right]:max-w-none", isResizing && "transition-none")}
+        className={cn("w-full max-w-none gap-0 p-0 data-[side=right]:w-full sm:data-[side=right]:w-(--chat-panel-width sm:data-[side=right]:max-w-none", isResizing && "transition-none")}
         style={{ "--chat-panel-width": `${panelWidth}px` } as CSSProperties}
       >
         <div
