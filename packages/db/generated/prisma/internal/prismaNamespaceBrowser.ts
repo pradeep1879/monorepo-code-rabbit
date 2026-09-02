@@ -104,7 +104,9 @@ export const RepositoryScalarFieldEnum = {
   url: 'url',
   userId: 'userId',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  indexingStatus: 'indexingStatus',
+  indexingError: 'indexingError'
 } as const
 
 export type RepositoryScalarFieldEnum = (typeof RepositoryScalarFieldEnum)[keyof typeof RepositoryScalarFieldEnum]

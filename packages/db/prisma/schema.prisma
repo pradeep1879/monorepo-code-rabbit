@@ -51,6 +51,8 @@ model Repository {
 
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
+  indexingStatus  String      @default("idle")
+  indexingError   String?
 
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   reviews         Review[]
@@ -67,7 +69,7 @@ model Review {
   prTitle                String
   prUrl                  String
   review                 String        @db.Text
-  status                 String        @default("completed")
+  status                 String        @default("pending")
   createdAt              DateTime      @default(now())
   updatedAt              DateTime      @updatedAt
 
@@ -79,13 +81,13 @@ model Review {
 
 }
 model ConversationMessage {
-  id                String      @id     @default(uuid())
+  id                String        @id     @default(uuid())
   reviewId          String
 
-  message           String       @db.Text
+  message           String        @db.Text
   role              ConversationRole
 
-  review            Review    @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  review            Review        @relation(fields: [reviewId], references: [id], onDelete: Cascade)
   createdAt         DateTime      @default(now())
 
   @@index([reviewId, createdAt])
