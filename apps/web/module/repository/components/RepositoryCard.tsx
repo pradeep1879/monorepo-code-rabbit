@@ -13,7 +13,7 @@ export function RepositoryCard({ repo, isConnecting, onConnect }: { repo: Reposi
             <div className="flex items-start gap-3">
               <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg border bg-muted/50 text-muted-foreground"><GitBranch className="size-4" /></div>
               <div className="min-w-0">
-                <a href={repo.html_url} target="_blank" rel="noopener noreferrer" className="break-words text-base font-semibold tracking-tight transition-colors hover:text-primary hover:underline">{repo.full_name}</a>
+                <a href={repo.html_url} target="_blank" rel="noopener noreferrer" className="wrap-break-word text-base font-semibold tracking-tight transition-colors hover:text-primary hover:underline">{repo.full_name}</a>
                 {repo.description && <p className="mt-1.5 max-w-3xl text-sm leading-5 text-muted-foreground">{repo.description}</p>}
               </div>
             </div>
