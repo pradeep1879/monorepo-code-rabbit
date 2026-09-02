@@ -6,6 +6,7 @@ export const useGetReview = () => {
     queryKey: ["reviews"],
     queryFn: async () => await getReview(),
     staleTime: 1000 * 60 * 5,
-    refetchOnWindowFocus: false
+    refetchOnWindowFocus: false,
+    refetchInterval: 3000,
   })
 }
