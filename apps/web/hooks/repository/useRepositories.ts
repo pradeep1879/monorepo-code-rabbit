@@ -14,6 +14,7 @@ export const useRepositories = () => {
       if (lastPage.length < REPOSITORIES_PAGE_SIZE) return undefined;
       return allPages.length + 1;
     },
-    initialPageParam: 1
+    initialPageParam: 1,
+    refetchInterval: 3000,
   })
 }
