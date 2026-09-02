@@ -29,4 +29,5 @@ export interface Repository {
  language: string | null;
  topics: string[];
 isConnected?: boolean;
+indexingStatus?: "idle" | "pending" | "processing" | "completed" | "failed";
 }
