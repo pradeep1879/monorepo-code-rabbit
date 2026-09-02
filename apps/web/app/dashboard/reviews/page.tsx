@@ -1,230 +1,111 @@
 "use client";
+
+import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { useGetReview } from "@/hooks/reviewHooks/usegeReview";
-import {
-  CheckCircle2,
-  ChevronDown,
-  ChevronUp,
-  Clock3,
-  ExternalLink,
-  GitBranchIcon,
-  GitPullRequest,
-  Loader2,
-  LoaderPinwheel,
-  Sparkles,
-  XCircle,
-} from "lucide-react";
-import React, { useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-
-import { Badge } from "@/components/ui/badge";
-
-import { Skeleton } from "@/components/ui/skeleton";
-
+import { ReviewHistoryEmpty } from "@/module/review/components/ReviewHistoryEmpty";
+import { ReviewHistoryError } from "@/module/review/components/ReviewHistoryError";
+import { ReviewHistoryHeader } from "@/module/review/components/ReviewHistoryHeader";
+import { ReviewHistoryList } from "@/module/review/components/ReviewHistoryList";
+import { ReviewHistorySkeleton } from "@/module/review/components/ReviewHistorySkeleton";
+import type { StatusFilter } from "@/module/review/components/ReviewHistoryTypes";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-
-import { Separator } from "@/components/ui/separator";
-import { formatDistanceToNow } from "date-fns";
-import Link from "next/link";
-import { cn } from "@/lib/utils";
-
 const ReviewPage = () => {
-  const [expand, setExpand] = useState(false);
-  const { data, isLoading } = useGetReview();
+  const { data, isError, isLoading, refetch } = useGetReview();
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [collapsedRepositories, setCollapsedRepositories] = useState<
+    Set<string>
+  >(new Set());
+  const [expandedReviews, setExpandedReviews] = useState<Set<string>>(
+    new Set(),
+  );
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "completed":
-        return (
-          <Badge variant="secondary" className="gap-1">
-            <CheckCircle2 className="h-3 w-3" />
-            Completed
-          </Badge>
-        );
+  const filteredReviews = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return (data ?? []).filter((review) => {
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "processing"
+          ? !["completed", "failed"].includes(review.status)
+          : review.status === statusFilter);
+      const matchesSearch =
+        !query ||
+        [
+          review.prTitle,
+          String(review.prNumber),
+          review.repository.fullName,
+          review.review,
+        ].some((value) => value.toLowerCase().includes(query));
+      return matchesStatus && matchesSearch;
+    });
+  }, [data, search, statusFilter]);
 
-      case "failed":
-        return (
-          <Badge variant="destructive" className="gap-1">
-            <XCircle className="h-3 w-3" />
-            Failed
-          </Badge>
-        );
-
-      default:
-        return (
-          <Badge className="gap-1">
-            <Loader2 className="h-3 w-3 animate-spin" />
-            Processing
-          </Badge>
-        );
+  const repositoryGroups = useMemo(() => {
+    const groups = new Map<string, typeof filteredReviews>();
+    for (const review of filteredReviews) {
+      const reviews = groups.get(review.repository.id) ?? [];
+      reviews.push(review);
+      groups.set(review.repository.id, reviews);
     }
+    return [...groups.entries()];
+  }, [filteredReviews]);
+
+  const toggleSetValue = (
+    setter: Dispatch<SetStateAction<Set<string>>>,
+    id: string,
+  ) => {
+    setter((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   };
 
-  return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div className="space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight">Review History</h1>
-
-          <p className="text-muted-foreground">
-            View all AI generated pull request reviews.
-          </p>
-        </div>
-
-        <div className="hidden md:flex items-center gap-2 rounded-xl border px-4 py-2 bg-muted/40">
-          <Sparkles className="h-4 w-4 text-primary" />
-
-          <span className="text-sm font-medium">AI Powered Reviews</span>
-        </div>
+  if (isLoading)
+    return (
+      <div className="flex min-h-[calc(100vh-8rem)] flex-col gap-6">
+        <ReviewHistoryHeader
+          search={search}
+          onSearchChange={setSearch}
+          statusFilter={statusFilter}
+          onStatusFilterChange={setStatusFilter}
+        />
+        <ReviewHistorySkeleton />
       </div>
+    );
+  if (isError) return <ReviewHistoryError onRetry={() => void refetch()} />;
 
-      {/* Loading */}
-      {isLoading && (
-        <div className="grid gap-5">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Card key={i} className="overflow-hidden">
-              <CardHeader className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Skeleton className="h-6 w-56" />
-
-                  <Skeleton className="h-6 w-24 rounded-full" />
-                </div>
-
-                <Skeleton className="h-4 w-72" />
-              </CardHeader>
-
-              <CardContent className="space-y-4">
-                <Skeleton className="h-4 w-full" />
-
-                <Skeleton className="h-4 w-[90%]" />
-
-                <Skeleton className="h-4 w-[80%]" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {/* Empty */}
-      {!isLoading && data?.length === 0 && (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <GitPullRequest className="mb-4 h-12 w-12 text-muted-foreground" />
-
-            <h3 className="text-lg font-semibold">No reviews yet</h3>
-
-            <p className="mt-2 max-w-md text-sm text-muted-foreground">
-              Connect a repository and open a pull request to generate your
-              first AI review.
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Reviews */}
-      {!isLoading && data && data.length > 0 && (
-        <ScrollArea className="h-[calc(100vh-220px)] pr-4">
-          <div className="space-y-5">
-            {data.map((review) => (
-              <Card
-                key={review.id}
-                className="group overflow-hidden transition-all hover:border-primary/40 hover:shadow-lg"
-              >
-                <CardHeader className="space-y-4">
-                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Avatar className="h-8 w-8">
-                          <AvatarFallback>
-                            <GitBranchIcon className="h-4 w-4" />
-                          </AvatarFallback>
-                        </Avatar>
-
-                        <div>
-                          <CardTitle className="text-lg">
-                            PR #{review.prNumber} — {review.prTitle}
-                          </CardTitle>
-
-                          <CardDescription className="flex items-center gap-2 pt-1">
-                            <GitBranchIcon className="h-3.5 w-3.5" />
-
-                            {review.repository.fullName}
-                          </CardDescription>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <Clock3 className="h-3.5 w-3.5" />
-
-                          {formatDistanceToNow(new Date(review.createdAt), {
-                            addSuffix: true,
-                          })}
-                        </div>
-                      </div>
-                    </div>
-
-                    {getStatusBadge(review.status)}
-                  </div>
-                </CardHeader>
-
-                <Separator />
-
-                <CardContent className="space-y-5 pt-6">
-                  <div className="rounded-xl border bg-muted/30 p-4">
-                    <div
-                      className={cn(
-                        "overflow-hidden transition-all duration-500 ease-in-out",
-                        expand ? "max-h-250" : "max-h-36",
-                      )}
-                    >
-                      <p className="whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
-                        {review.review}
-                      </p>
-                    </div>
-
-                    <div className="mt-3 flex justify-center">
-                      <button
-                        onClick={() => setExpand((prev) => !prev)}
-                        className="group inline-flex items-center gap-1.5 rounded-full border bg-background px-3.5 py-1.5 text-sm font-medium text-muted-foreground shadow-sm transition-all duration-200 hover:border-purple-300 hover:bg-purple-50 hover:text-purple-600 dark:hover:bg-purple-950/30"
-                      >
-                        {expand ? "Show less" : "Show more"}
-
-                        {expand ? (
-                          <ChevronUp className="h-4 w-4 transition-transform duration-300" />
-                        ) : (
-                          <ChevronDown className="h-4 w-4 transition-transform duration-300" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <Link
-                      href={review.prUrl}
-                      target="_blank"
-                      className="inline-flex items-center gap-2 text-sm font-medium text-primary transition-opacity hover:opacity-80"
-                    >
-                      View Pull Request
-                      <ExternalLink className="h-4 w-4" />
-                    </Link>
-
-                    <Badge variant="outline" className="rounded-full">
-                      AI Review
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+  return (
+    <div className="flex min-h-[calc(100vh-8rem)] flex-col gap-6">
+      <ReviewHistoryHeader
+        search={search}
+        onSearchChange={setSearch}
+        statusFilter={statusFilter}
+        onStatusFilterChange={setStatusFilter}
+      />
+      {!data?.length ? (
+        <ReviewHistoryEmpty filtered={false} />
+      ) : !repositoryGroups.length ? (
+        <ReviewHistoryEmpty
+          filtered
+          onClearFilters={() => {
+            setSearch("");
+            setStatusFilter("all");
+          }}
+        />
+      ) : (
+        <ScrollArea className="min-h-0 flex-1 pr-3">
+          <ReviewHistoryList
+            repositoryGroups={repositoryGroups}
+            collapsedRepositories={collapsedRepositories}
+            expandedReviews={expandedReviews}
+            onToggleRepository={(id) =>
+              toggleSetValue(setCollapsedRepositories, id)
+            }
+            onToggleReview={(id) => toggleSetValue(setExpandedReviews, id)}
+          />
         </ScrollArea>
       )}
     </div>
