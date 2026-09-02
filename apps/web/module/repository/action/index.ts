@@ -31,7 +31,8 @@ export const connectRepository = async (owner:string, repo:string, githubId:numb
       name: repo,
       owner,
       url: `https://github.com/${owner}/${repo}`,
-      userId: session.user.id
+      userId: session.user.id,
+      indexingStatus: "pending",
      }     
     });
 
@@ -49,6 +50,13 @@ export const connectRepository = async (owner:string, repo:string, githubId:numb
         }
       })
     } catch (error) {
+      await prisma.repository.updateMany({
+        where: { userId: session.user.id, owner, name: repo },
+        data: {
+          indexingStatus: "failed",
+          indexingError: error instanceof Error ? error.message : "Failed to queue indexing",
+        },
+      });
       console.log("Failed to trigger repo indexing:", error)
     }
     console.log("Repository connected successfully");
@@ -74,14 +82,15 @@ export const fetchRepositories = async (page:number = 1, perPage:number = 10) =>
     }
   });
 
-  const connectedRepoIds = new Set(
-    dbRepos.map((repo) => repo.githubId.toString())
+  const connectedRepositories = new Map(
+    dbRepos.map((repo) => [repo.githubId.toString(), repo])
   );
 
 
   return githubRepos.map((repo) => ({
     ...repo,
-    isConnected: connectedRepoIds.has(repo.id.toString())
+    isConnected: connectedRepositories.has(repo.id.toString()),
+    indexingStatus: connectedRepositories.get(repo.id.toString())?.indexingStatus,
   }));
 
 
