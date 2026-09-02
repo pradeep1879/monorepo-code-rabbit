@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2, Send, Sparkles } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -58,8 +58,8 @@ export function ReviewChat({ reviewId }: { reviewId: string }) {
       </SheetTrigger>
       <SheetContent
         side="right"
-        className={cn("w-full max-w-none gap-0 p-0 data-[side=right]:w-full sm:data-[side=right]:w-(--chat-panel-width sm:data-[side=right]:max-w-none", isResizing && "transition-none")}
-        style={{ "--chat-panel-width": `${panelWidth}px` } as CSSProperties}
+        className={cn("max-w-none gap-0 p-0 sm:max-w-none", isResizing && "transition-none")}
+        style={{ width: `min(${panelWidth}px, calc(100vw - 1rem))`, maxWidth: "calc(100vw - 1rem)" }}
       >
         <div
           role="separator"
