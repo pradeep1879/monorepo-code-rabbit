@@ -1,12 +1,15 @@
-"use server"
+"use server";
 
-
-import { fetchUserContribution, getGithubAccesstoken } from "@/module/github/lib/github";
+import {
+  fetchUserContribution,
+  getGithubAccesstoken,
+} from "@/module/github/lib/github";
 import { auth } from "@repo/auth/server";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { Octokit } from "octokit";
+import { prisma } from "@repo/db";
 
 export async function middleware(req: NextRequest) {
   const token = req.cookies.get("session");
@@ -35,72 +38,58 @@ export const getContributionStats = async () => {
     const token = await getGithubAccesstoken();
 
     const octokit = new Octokit({
-      auth:token
+      auth: token,
     });
 
     const { data: user } = await octokit.rest.users.getAuthenticated();
 
     const calendar = await fetchUserContribution(token, user.login);
 
-    if(!calendar){
+    if (!calendar) {
       return [];
     }
 
-    const contributions = calendar.weeks.flatMap(
-      (week) =>
-        week.contributionDays.map((day) => ({
-          date: day.date,
-          count: day.contributionCount,
-          level: Math.min(
-            4,
-            Math.floor(day.contributionCount / 3)
-          ),
-        }))
+    const contributions = calendar.weeks.flatMap((week) =>
+      week.contributionDays.map((day) => ({
+        date: day.date,
+        count: day.contributionCount,
+        level: Math.min(4, Math.floor(day.contributionCount / 3)),
+      })),
     );
 
-    return contributions
+    return contributions;
   } catch (error) {
-     console.error(
-      "Contribution Stats Error:",
-      error
-    );
+    console.error("Contribution Stats Error:", error);
   }
-}
+};
 
 export const getDashboardStats = async () => {
   try {
     const session = await auth.api.getSession({
       headers: await headers(),
-    })
-    console.log(session,"session from get dashboard stats")
-    if(!session?.user){
+    });
+    console.log(session, "session from get dashboard stats");
+    if (!session?.user) {
       throw new Error("Unauthorized");
     }
     const token = await getGithubAccesstoken();
     const octokit = new Octokit({
-      auth: token
+      auth: token,
     });
-
 
     const { data: user } = await octokit.rest.users.getAuthenticated();
 
-    //TODO: Replace with real db values
-
-    const totalRepo = 20
-    const totalReviews = 44;
-
-
-    const [calendar, prsResponse] =  await Promise.all([
-       fetchUserContribution(token, user.login),
-
-       octokit.rest.search.issuesAndPullRequests(
-        {
-          q: `author:${user.login} type:pr`,
-          per_page: 1,
-        }
-       )
+    const [calendar, prsResponse, totalRepo, totalReviews] = await Promise.all([
+      fetchUserContribution(token, user.login),
+      octokit.rest.search.issuesAndPullRequests({
+        q: `author:${user.login} type:pr`,
+        per_page: 1,
+      }),
+      prisma.repository.count({ where: { userId: session.user.id } }),
+      prisma.review.count({
+        where: { repository: { userId: session.user.id } },
+      }),
     ]);
-
 
     const totalCommits = calendar?.totalContributions || 0;
 
@@ -110,24 +99,19 @@ export const getDashboardStats = async () => {
       totalCommits,
       totalPrs,
       totalReviews,
-      totalRepo
-    }
-
+      totalRepo,
+    };
   } catch (error) {
-     console.error(
-      "Dashbord Stats Error:",
-      error
-    );
+    console.error("Dashbord Stats Error:", error);
 
     return {
       totalCommits: 0,
       totalPrs: 0,
       totalReviews: 0,
-      totalRepo: 0
-    }
+      totalRepo: 0,
+    };
   }
-}
-
+};
 
 export const getMonthlyActivity = async () => {
   try {
@@ -138,16 +122,13 @@ export const getMonthlyActivity = async () => {
     if (!session?.user) {
       throw new Error("Unauthorized");
     }
-    const token = await getGithubAccesstoken()
-
-
+    const token = await getGithubAccesstoken();
 
     const octokit = new Octokit({
       auth: token,
     });
 
-    const { data: user } =
-      await octokit.rest.users.getAuthenticated();
+    const { data: user } = await octokit.rest.users.getAuthenticated();
 
     const monthNames = [
       "Jan",
@@ -176,14 +157,9 @@ export const getMonthlyActivity = async () => {
     const now = new Date();
 
     for (let i = 5; i >= 0; i--) {
-      const date = new Date(
-        now.getFullYear(),
-        now.getMonth() - i,
-        1
-      );
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
 
-      const monthKey =
-        monthNames[date.getMonth()]!;
+      const monthKey = monthNames[date.getMonth()]!;
 
       monthlyData[monthKey] = {
         commits: 0,
@@ -194,28 +170,18 @@ export const getMonthlyActivity = async () => {
 
     const sixMonthsAgo = new Date();
 
-    sixMonthsAgo.setMonth(
-      sixMonthsAgo.getMonth() - 6
-    );
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
-    const [calendar, prsResponse] =
-      await Promise.all([
-        fetchUserContribution(
-          token,
-          user.login
-        ),
+    const [calendar, prsResponse] = await Promise.all([
+      fetchUserContribution(token, user.login),
 
-        octokit.rest.search.issuesAndPullRequests(
-          {
-            q: `author:${user.login} type:pr created:>${
-              sixMonthsAgo
-                .toISOString()
-                .split("T")[0]
-            }`,
-            per_page: 100,
-          }
-        ),
-      ]);
+      octokit.rest.search.issuesAndPullRequests({
+        q: `author:${user.login} type:pr created:>${
+          sixMonthsAgo.toISOString().split("T")[0]
+        }`,
+        per_page: 100,
+      }),
+    ]);
 
     if (!calendar) {
       return [];
@@ -223,85 +189,47 @@ export const getMonthlyActivity = async () => {
 
     // commits
     calendar.weeks.forEach((week) => {
-      week.contributionDays.forEach(
-        (day) => {
-          const date = new Date(day.date);
+      week.contributionDays.forEach((day) => {
+        const date = new Date(day.date);
 
-          const monthKey =
-            monthNames[date.getMonth()]!;
+        const monthKey = monthNames[date.getMonth()]!;
 
-          if (monthlyData[monthKey]) {
-            monthlyData[
-              monthKey
-            ].commits +=
-              day.contributionCount;
-          }
+        if (monthlyData[monthKey]) {
+          monthlyData[monthKey].commits += day.contributionCount;
         }
-      );
+      });
     });
 
-    // TEMP reviews
-    const reviews = Array.from(
-      { length: 45 },
-      () => {
-        const randomDaysAgo = Math.floor(
-          Math.random() * 180
-        );
-
-        const reviewDate = new Date();
-
-        reviewDate.setDate(
-          reviewDate.getDate() -
-            randomDaysAgo
-        );
-
-        return {
-          createdAt: reviewDate,
-        };
-      }
-    );
-
+    const reviews = await prisma.review.findMany({
+      where: {
+        repository: { userId: session.user.id },
+        createdAt: { gte: sixMonthsAgo },
+      },
+      select: { createdAt: true },
+    });
     reviews.forEach((review) => {
-      const monthKey =
-        monthNames[
-          review.createdAt.getMonth()
-        ]!;
-
-      if (monthlyData[monthKey]) {
-        monthlyData[monthKey].reviews += 1;
-      }
+      const monthKey = monthNames[review.createdAt.getMonth()]!;
+      if (monthlyData[monthKey]) monthlyData[monthKey].reviews += 1;
     });
 
     // PRs
-    prsResponse.data.items.forEach(
-      (pr: { created_at: string }) => {
-        const date = new Date(
-          pr.created_at
-        );
+    prsResponse.data.items.forEach((pr: { created_at: string }) => {
+      const date = new Date(pr.created_at);
 
-        const monthKey =
-          monthNames[date.getMonth()]!;
+      const monthKey = monthNames[date.getMonth()]!;
 
-        if (monthlyData[monthKey]) {
-          monthlyData[monthKey].prs += 1;
-        }
+      if (monthlyData[monthKey]) {
+        monthlyData[monthKey].prs += 1;
       }
-    );
+    });
 
-    return Object.keys(monthlyData).map(
-      (name) => ({
-        name,
-        ...monthlyData[name],
-      })
-    );
+    return Object.keys(monthlyData).map((name) => ({
+      name,
+      ...monthlyData[name],
+    }));
   } catch (error) {
-    console.error(
-      "Monthly Activity Error:",
-      error
-    );
+    console.error("Monthly Activity Error:", error);
 
     return [];
   }
 };
-
-
