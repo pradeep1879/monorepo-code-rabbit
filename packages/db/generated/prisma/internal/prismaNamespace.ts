@@ -388,6 +388,7 @@ export const ModelName = {
   Repository: 'Repository',
   Review: 'Review',
   ConversationMessage: 'ConversationMessage',
+  AgentApproval: 'AgentApproval',
   UserUsage: 'UserUsage',
   Session: 'Session',
   Account: 'Account',
@@ -407,7 +408,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "repository" | "review" | "conversationMessage" | "userUsage" | "session" | "account" | "verification"
+    modelProps: "user" | "repository" | "review" | "conversationMessage" | "agentApproval" | "userUsage" | "session" | "account" | "verification"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -704,6 +705,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.ConversationMessageCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.ConversationMessageCountAggregateOutputType> | number
+        }
+      }
+    }
+    AgentApproval: {
+      payload: Prisma.$AgentApprovalPayload<ExtArgs>
+      fields: Prisma.AgentApprovalFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.AgentApprovalFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentApprovalPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.AgentApprovalFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentApprovalPayload>
+        }
+        findFirst: {
+          args: Prisma.AgentApprovalFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentApprovalPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.AgentApprovalFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentApprovalPayload>
+        }
+        findMany: {
+          args: Prisma.AgentApprovalFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentApprovalPayload>[]
+        }
+        create: {
+          args: Prisma.AgentApprovalCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentApprovalPayload>
+        }
+        createMany: {
+          args: Prisma.AgentApprovalCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.AgentApprovalCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentApprovalPayload>[]
+        }
+        delete: {
+          args: Prisma.AgentApprovalDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentApprovalPayload>
+        }
+        update: {
+          args: Prisma.AgentApprovalUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentApprovalPayload>
+        }
+        deleteMany: {
+          args: Prisma.AgentApprovalDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.AgentApprovalUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.AgentApprovalUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentApprovalPayload>[]
+        }
+        upsert: {
+          args: Prisma.AgentApprovalUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AgentApprovalPayload>
+        }
+        aggregate: {
+          args: Prisma.AgentApprovalAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateAgentApproval>
+        }
+        groupBy: {
+          args: Prisma.AgentApprovalGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AgentApprovalGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.AgentApprovalCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AgentApprovalCountAggregateOutputType> | number
         }
       }
     }
@@ -1103,6 +1178,21 @@ export const ConversationMessageScalarFieldEnum = {
 export type ConversationMessageScalarFieldEnum = (typeof ConversationMessageScalarFieldEnum)[keyof typeof ConversationMessageScalarFieldEnum]
 
 
+export const AgentApprovalScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  reviewId: 'reviewId',
+  toolName: 'toolName',
+  payload: 'payload',
+  status: 'status',
+  expiresAt: 'expiresAt',
+  consumedAt: 'consumedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type AgentApprovalScalarFieldEnum = (typeof AgentApprovalScalarFieldEnum)[keyof typeof AgentApprovalScalarFieldEnum]
+
+
 export const UserUsageScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
@@ -1424,6 +1514,7 @@ export type GlobalOmitConfig = {
   repository?: Prisma.RepositoryOmit
   review?: Prisma.ReviewOmit
   conversationMessage?: Prisma.ConversationMessageOmit
+  agentApproval?: Prisma.AgentApprovalOmit
   userUsage?: Prisma.UserUsageOmit
   session?: Prisma.SessionOmit
   account?: Prisma.AccountOmit

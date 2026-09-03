@@ -55,6 +55,7 @@ export const ModelName = {
   Repository: 'Repository',
   Review: 'Review',
   ConversationMessage: 'ConversationMessage',
+  AgentApproval: 'AgentApproval',
   UserUsage: 'UserUsage',
   Session: 'Session',
   Account: 'Account',
@@ -136,6 +137,21 @@ export const ConversationMessageScalarFieldEnum = {
 } as const
 
 export type ConversationMessageScalarFieldEnum = (typeof ConversationMessageScalarFieldEnum)[keyof typeof ConversationMessageScalarFieldEnum]
+
+
+export const AgentApprovalScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  reviewId: 'reviewId',
+  toolName: 'toolName',
+  payload: 'payload',
+  status: 'status',
+  expiresAt: 'expiresAt',
+  consumedAt: 'consumedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type AgentApprovalScalarFieldEnum = (typeof AgentApprovalScalarFieldEnum)[keyof typeof AgentApprovalScalarFieldEnum]
 
 
 export const UserUsageScalarFieldEnum = {

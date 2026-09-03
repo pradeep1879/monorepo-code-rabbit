@@ -94,6 +94,21 @@ model ConversationMessage {
   @@map("conversation_message")
 }
 
+model AgentApproval {
+  id          String    @id @default(cuid())
+  userId      String
+  reviewId    String
+  toolName    String
+  payload     Json
+  status      String    @default("pending")
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId, reviewId, status])
+  @@map("agent_approval")
+}
+
 enum ConversationRole {
   USER
   ASSISTANT

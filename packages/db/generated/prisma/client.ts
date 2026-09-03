@@ -62,6 +62,11 @@ export type Review = Prisma.ReviewModel
  */
 export type ConversationMessage = Prisma.ConversationMessageModel
 /**
+ * Model AgentApproval
+ * 
+ */
+export type AgentApproval = Prisma.AgentApprovalModel
+/**
  * Model UserUsage
  * 
  */
