@@ -4,9 +4,12 @@ import {
 } from "@/module/chat/chat-server";
 import {
   approveApplyPatch,
+  approveCommitChanges,
   approveCreateBranch,
+  approveCreatePullRequest,
 } from "@/module/chat/chat-tools";
 import { auth } from "@repo/auth/server";
+import { prisma } from "@repo/db";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
@@ -84,10 +87,25 @@ export async function PATCH(request: Request) {
     };
     if (typeof body.approvalId !== "string")
       return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+    const approval = await prisma.agentApproval.findFirst({
+      where: { id: body.approvalId, userId: session.user.id },
+      select: { toolName: true },
+    });
+    if (!approval)
+      return NextResponse.json({ error: "APPROVAL_EXPIRED" }, { status: 409 });
+    const toolName = approval.toolName;
     const result =
-      body.toolName === "apply_patch"
+      toolName === "apply_patch"
         ? await approveApplyPatch(body.approvalId, session.user.id)
-        : await approveCreateBranch(body.approvalId, session.user.id);
+        : toolName === "commit_changes"
+          ? await approveCommitChanges(body.approvalId, session.user.id)
+          : toolName === "create_pull_request"
+            ? await approveCreatePullRequest(body.approvalId, session.user.id)
+            : toolName === "create_branch"
+              ? await approveCreateBranch(body.approvalId, session.user.id)
+              : (() => {
+                  throw new Error("UNKNOWN_APPROVAL_TOOL");
+                })();
     return NextResponse.json(result);
   } catch (error) {
     const message =
