@@ -177,9 +177,17 @@ export const useApproveChatAction = (reviewId: string) => {
       } | null;
       if (!response.ok)
         throw new Error(body?.error ?? "Unable to approve action");
-      return { approvalId, result: body };
+      return { approvalId, toolName, result: body };
     },
-    onSuccess: async ({ approvalId }) => {
+    onSuccess: async ({ approvalId, toolName }) => {
+      const completedLabel =
+        toolName === "apply_patch"
+          ? "Changes applied"
+          : toolName === "commit_changes"
+            ? "Changes committed"
+            : toolName === "create_pull_request"
+              ? "Pull request created"
+              : "Branch created";
       queryClient.setQueryData<ConversationMessage[]>(
         reviewChatQueryKey(reviewId),
         (current = []) =>
@@ -189,7 +197,7 @@ export const useApproveChatAction = (reviewId: string) => {
                   ...item,
                   activity: {
                     ...item.activity,
-                    label: "Branch created",
+                    label: completedLabel,
                     status: "completed" as const,
                     action: undefined,
                   },
