@@ -27,13 +27,6 @@ export default function DashboardPage() {
   const reviews = useGetReview();
 
   const reviewData = useMemo(() => reviews.data ?? [], [reviews.data]);
-  const pendingReviews = useMemo(
-    () =>
-      reviewData.filter(
-        (review) => !["completed", "failed"].includes(review.status),
-      ).length,
-    [reviewData],
-  );
   const isLoading = stats.isLoading || reviews.isLoading;
 
   return (
@@ -42,8 +35,8 @@ export default function DashboardPage() {
       <DashboardKpiCards
         repositories={stats.data?.totalRepo ?? 0}
         openPrs={stats.data?.totalPrs ?? 0}
-        reviews={stats.data?.totalReviews ?? 0}
-        pendingReviews={pendingReviews}
+        issuesFound={stats.data?.totalFindings ?? 0}
+        issuesResolved={stats.data?.resolvedFindings ?? 0}
         isLoading={isLoading}
       />
       {reviews.isError ? (
@@ -55,7 +48,12 @@ export default function DashboardPage() {
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
           <NeedsAttention reviews={reviewData} />
-          <ReviewHealth reviews={reviewData} />
+          <ReviewHealth
+            reviews={reviewData}
+            findings={stats.data?.findingSeverities ?? {}}
+            totalFindings={stats.data?.totalFindings ?? 0}
+            resolvedFindings={stats.data?.resolvedFindings ?? 0}
+          />
         </div>
       )}
       <RecentReviews reviews={reviewData} />
