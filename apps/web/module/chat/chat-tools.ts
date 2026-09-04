@@ -10,6 +10,12 @@ import {
   getRepoFileContents,
   searchGithubCode,
 } from "@/module/github/lib/github";
+import {
+  approveCommitChanges,
+  approveCreatePullRequest,
+  requestCommitApproval,
+  requestPullRequestApproval,
+} from "@/module/chat/chat-repository-actions";
 
 export type ChatToolEvent = {
   type: "tool";
@@ -20,7 +26,11 @@ export type ChatToolEvent = {
   action?: { approvalId: string; label: string; toolName?: string };
 };
 
-type ToolContext = { reviewId: string; userId: string };
+type ToolContext = {
+  reviewId: string;
+  userId: string;
+  requestedBranch?: string;
+};
 type ToolArgs = Record<string, unknown>;
 
 const declarations = [
@@ -125,6 +135,39 @@ const declarations = [
       additionalProperties: false,
     },
   },
+  {
+    name: "commit_changes",
+    description:
+      "Request approval to commit an explicitly prepared file update to the approved working branch. This always waits for explicit user approval.",
+    parametersJsonSchema: {
+      type: "object",
+      properties: {
+        filePath: { type: "string" },
+        branchName: { type: "string" },
+        content: { type: "string" },
+        expectedFileSha: { type: "string" },
+        message: { type: "string" },
+      },
+      required: ["filePath", "branchName", "content", "expectedFileSha", "message"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "create_pull_request",
+    description:
+      "Request approval to create a pull request from the approved working branch. This always waits for explicit user approval.",
+    parametersJsonSchema: {
+      type: "object",
+      properties: {
+        headBranch: { type: "string" },
+        baseBranch: { type: "string" },
+        title: { type: "string" },
+        body: { type: "string" },
+      },
+      required: ["headBranch", "baseBranch", "title"],
+      additionalProperties: false,
+    },
+  },
 ];
 
 const requireString = (args: ToolArgs, key: string) => {
@@ -163,6 +206,31 @@ const getReviewContext = (context: ToolContext) =>
     },
   });
 
+const getApprovedBranch = async (context: ToolContext) => {
+  const approval = await prisma.agentApproval.findFirst({
+    where: {
+      reviewId: context.reviewId,
+      userId: context.userId,
+      toolName: "create_branch",
+      status: "consumed",
+    },
+    orderBy: { consumedAt: "desc" },
+    select: { payload: true },
+  });
+  const payload = approval?.payload as { branchName?: unknown } | undefined;
+  const approvedBranch =
+    typeof payload?.branchName === "string" && payload.branchName.trim()
+      ? safeBranchName(payload.branchName.trim())
+      : undefined;
+  if (
+    context.requestedBranch &&
+    approvedBranch &&
+    context.requestedBranch !== approvedBranch
+  )
+    return undefined;
+  return approvedBranch;
+};
+
 export const chatToolDeclarations = declarations;
 
 export const executeChatTool = async (
@@ -196,7 +264,27 @@ export const executeChatTool = async (
       };
     }
     case "get_file": {
-      const path = requireString(args, "path");
+      const path =
+        typeof args.path === "string" && args.path.trim()
+          ? args.path.trim()
+          : requireString(args, "filePath");
+      const branchName = await getApprovedBranch(context);
+      if (branchName) {
+        const file = await getGithubFile(
+          token,
+          review.repository.owner,
+          review.repository.name,
+          path,
+          branchName,
+        );
+        return {
+          ...file,
+          branchName,
+          content: file.content.slice(0, 16000),
+          truncated: file.content.length > 16000,
+        };
+      }
+
       const files = await getRepoFileContents(
         token,
         review.repository.owner,
@@ -228,12 +316,14 @@ export const executeChatTool = async (
     case "propose_patch": {
       const filePath = requireSafePath(args);
       const instruction = requireString(args, "instruction");
+      const branchName = await getApprovedBranch(context);
       const [file, pullRequest] = await Promise.all([
         getGithubFile(
           token,
           review.repository.owner,
           review.repository.name,
           filePath,
+          branchName,
         ),
         getPullRequestDiff(
           token,
@@ -245,14 +335,13 @@ export const executeChatTool = async (
       return {
         type: "patch_context",
         filePath: file.path,
+        branchName,
         expectedFileSha: file.sha,
         instruction,
         currentFile: file.content.slice(0, 20000),
         pullRequestDiff: pullRequest.diff.slice(0, 24000),
         truncated:
           file.content.length > 20000 || pullRequest.diff.length > 24000,
-        approvalRequired: true,
-        applied: false,
       };
     }
     case "create_branch": {
@@ -357,12 +446,71 @@ export const executeChatTool = async (
         status: "WAITING_FOR_APPROVAL",
       };
     }
-    case "get_finding":
-      return {
-        error: "FINDING_NOT_AVAILABLE",
-        message:
-          "This installation does not persist individual finding records yet.",
-      };
+    case "commit_changes": {
+      const filePath = requireSafePath(args);
+      const branchName = safeBranchName(requireString(args, "branchName"));
+      const expectedFileSha = requireString(args, "expectedFileSha");
+      const content = requireString(args, "content");
+      const message = requireString(args, "message");
+      const approvedBranch = await getApprovedBranch(context);
+      if (!approvedBranch || approvedBranch !== branchName)
+        throw new Error("APPROVED_BRANCH_REQUIRED");
+      const current = await getGithubFile(
+        token,
+        review.repository.owner,
+        review.repository.name,
+        filePath,
+        branchName,
+      );
+      if (current.sha !== expectedFileSha) throw new Error("STALE_SHA");
+      return requestCommitApproval({
+        reviewId: context.reviewId,
+        userId: context.userId,
+        owner: review.repository.owner,
+        repo: review.repository.name,
+        branchName,
+        filePath,
+        content,
+        expectedFileSha,
+        message,
+      });
+    }
+    case "create_pull_request": {
+      const headBranch = safeBranchName(requireString(args, "headBranch"));
+      const baseBranch = safeBranchName(requireString(args, "baseBranch"));
+      const title = requireString(args, "title");
+      const body = typeof args.body === "string" ? args.body.trim() : "";
+      const approvedBranch = await getApprovedBranch(context);
+      if (!approvedBranch || approvedBranch !== headBranch)
+        throw new Error("APPROVED_BRANCH_REQUIRED");
+      const pullRequest = await getPullRequest(
+        token,
+        review.repository.owner,
+        review.repository.name,
+        review.prNumber,
+      );
+      if (baseBranch !== pullRequest.base)
+        throw new Error("INVALID_BASE_BRANCH");
+      if (!(await githubBranchExists(token, review.repository.owner, review.repository.name, headBranch)))
+        throw new Error("BRANCH_NOT_FOUND");
+      return requestPullRequestApproval({
+        reviewId: context.reviewId,
+        userId: context.userId,
+        owner: review.repository.owner,
+        repo: review.repository.name,
+        headBranch,
+        baseBranch,
+        title,
+        body,
+      });
+    }
+    case "get_finding": {
+      const findingId = requireString(args, "findingId");
+      const finding = await prisma.reviewFinding.findFirst({
+        where: { id: findingId, reviewId: context.reviewId },
+      });
+      return finding ?? { error: "FINDING_NOT_FOUND", findingId };
+    }
     default:
       throw new Error(`Unknown tool: ${name}`);
   }
@@ -443,6 +591,11 @@ export const approveApplyPatch = async (approvalId: string, userId: string) => {
     data: { status: "running" },
   });
   if (claimed.count !== 1) throw new Error("APPROVAL_ALREADY_USED");
+  const markFailed = () =>
+    prisma.agentApproval.update({
+      where: { id: approval.id },
+      data: { status: "failed" },
+    });
   const payload = approval.payload as {
     owner: string;
     repo: string;
@@ -451,19 +604,28 @@ export const approveApplyPatch = async (approvalId: string, userId: string) => {
     expectedFileSha: string;
     patch: string;
   };
-  const token = await getGithubAccesstoken();
-  const file = await getGithubFile(
-    token,
-    payload.owner,
-    payload.repo,
-    payload.filePath,
-    payload.branchName,
-  );
+  let token: string;
+  try {
+    token = await getGithubAccesstoken();
+  } catch {
+    await markFailed();
+    throw new Error("GITHUB_AUTH_FAILED");
+  }
+  let file;
+  try {
+    file = await getGithubFile(
+      token,
+      payload.owner,
+      payload.repo,
+      payload.filePath,
+      payload.branchName,
+    );
+  } catch {
+    await markFailed();
+    throw new Error("GITHUB_FILE_READ_FAILED");
+  }
   if (file.sha !== payload.expectedFileSha) {
-    await prisma.agentApproval.update({
-      where: { id: approval.id },
-      data: { status: "failed" },
-    });
+    await markFailed();
     throw new Error("STALE_SHA");
   }
   const { applyUnifiedPatch } = await import("@/module/chat/patch-application");
@@ -508,8 +670,10 @@ export const approveApplyPatch = async (approvalId: string, userId: string) => {
     data: {
       reviewId: approval.reviewId,
       role: "ASSISTANT",
-      message: `Changes were applied to ${payload.filePath} on branch ${payload.branchName}. They are not committed or pushed yet.`,
+      message: `Changes were applied to ${payload.filePath} on branch ${payload.branchName}. A GitHub commit was created because applying a file update through GitHub also commits it.`,
     },
   });
   return { ...result, status: "COMPLETED" };
 };
+
+export { approveCommitChanges, approveCreatePullRequest };

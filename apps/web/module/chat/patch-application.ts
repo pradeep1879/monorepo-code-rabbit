@@ -9,6 +9,22 @@ export class PatchApplicationError extends Error {
 
 const normalizePath = (path: string) => path.replace(/^([ab])\//, "");
 
+const findSequence = (source: string[], sequence: string[], from: number) => {
+  if (!sequence.length) return Math.max(0, Math.min(from, source.length));
+  for (
+    let index = Math.max(0, from);
+    index <= source.length - sequence.length;
+    index += 1
+  ) {
+    if (
+      source.slice(index, index + sequence.length).join("\n") ===
+      sequence.join("\n")
+    )
+      return index;
+  }
+  return -1;
+};
+
 export const applyUnifiedPatch = (
   currentContent: string,
   patch: string,
@@ -66,16 +82,14 @@ export const applyUnifiedPatch = (
       else if (line.startsWith("-")) original.push(line.slice(1));
       else if (line.startsWith("+")) replacement.push(line.slice(1));
     }
-    if (
-      source.slice(start, start + original.length).join("\n") !==
-      original.join("\n")
-    )
+    const actualStart = findSequence(source, original, start);
+    if (actualStart < 0)
       throw new PatchApplicationError(
         "PATCH_CONFLICT",
         "Patch context no longer matches the file",
       );
-    source.splice(start, original.length, ...replacement);
-    offset += replacement.length - original.length;
+    source.splice(actualStart, original.length, ...replacement);
+    offset += actualStart - start + replacement.length - original.length;
   }
   return source.join("\n");
 };

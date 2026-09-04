@@ -103,7 +103,11 @@ export const getChatMessagesForUser = async (
           label:
             approval.toolName === "apply_patch"
               ? "Apply changes"
-              : "Approve create branch",
+              : approval.toolName === "commit_changes"
+                ? "Commit changes"
+                : approval.toolName === "create_pull_request"
+                  ? "Create pull request"
+                  : "Approve create branch",
           toolName: approval.toolName,
         },
       },
@@ -135,6 +139,9 @@ export const createChatStream = async ({
   const branchPayload = approvedBranch?.payload as
     | { branchName?: string }
     | undefined;
+  const requestedBranch = trimmedMessage.match(
+    /\bbranch(?:\s+named)?\s+["'`]?((?:ai\/)[A-Za-z0-9._/-]{1,79})/i,
+  )?.[1];
 
   await prisma.conversationMessage.create({
     data: { reviewId, message: trimmedMessage, role: "USER" },
@@ -154,19 +161,25 @@ export const createChatStream = async ({
         ${review.review}
 
   Use the review and conversation history as your primary context. Do not invent information. Answer clearly and concisely.
-  You may use read-only tools when the review or conversation does not contain enough detail. Never claim to have changed code, created a branch, committed, pushed, or updated a pull request.`;
+  You may use read-only tools when the review or conversation does not contain enough detail. Never claim to have changed code, created a branch, committed, pushed, or updated a pull request. Repository mutations require the matching tool and explicit user approval. apply_patch creates a GitHub commit because GitHub's file API is commit-based. Use commit_changes for a separate explicitly prepared file commit, and create_pull_request only after the approved branch is ready.`;
 
   const encoder = new TextEncoder();
   const patchInstruction =
-    "When the user asks to fix or apply a change, do not only print a diff. First inspect the real file, then call apply_patch with filePath, branchName, expectedFileSha, and the complete unified diff so the UI can request approval. Never claim that changes were applied before the user approves.";
-  const branchInstruction = branchPayload?.branchName
-    ? "An approved working branch already exists: " +
-      branchPayload.branchName +
-      ". Do not request another branch; use this branch for apply_patch."
-    : "No working branch has been approved yet. Request create_branch only when the user explicitly asks for a new branch.";
+    "When the user explicitly asks for an apply_patch workflow, call get_file and get_pull_request_diff to inspect the real file and PR diff, then immediately call apply_patch with the exact path returned by get_file, the branchName returned by get_file (or the approved working branch), the exact expectedFileSha returned by get_file, and a complete minimal unified diff. The file and SHA must come from the same approved branch. Do not call propose_patch for this workflow because it only provides context and is not an approval request. Never claim that changes were applied before the user approves.";
+  const branchInstruction =
+    requestedBranch && requestedBranch !== branchPayload?.branchName
+      ? `The user explicitly requested branch ${requestedBranch}, but it has not been approved in this conversation. Request create_branch for exactly this branch before preparing apply_patch.`
+      : branchPayload?.branchName
+        ? "An approved working branch already exists: " +
+          branchPayload.branchName +
+          ". Do not request another branch; use this branch for apply_patch."
+        : "No working branch has been approved yet. Request create_branch only when the user explicitly asks for a new branch.";
+  const mutationInstruction =
+    "For commit requests, first use get_file on the approved branch, then call commit_changes with the exact current SHA, complete updated file content, and a concise commit message. For pull request requests, use create_pull_request with the approved head branch and the original PR base branch. Both tools pause for explicit approval; never report success before approval.";
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       let assistantText = "";
+      let completedResponse = false;
 
       const sendEvent = (event: ChatToolEvent) => {
         controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
@@ -178,39 +191,41 @@ export const createChatStream = async ({
           { role: "user", parts: [{ text: trimmedMessage }] },
         ];
 
-        agentLoop: for (let round = 0; round < 5; round += 1) {
+        agentLoop: for (let round = 0; round < 8; round += 1) {
           const response = await ai.models.generateContentStream({
             model: "gemini-3-flash-preview",
             contents,
             config: {
               systemInstruction:
-                systemInstruction + patchInstruction + branchInstruction,
+                systemInstruction +
+                  patchInstruction +
+                  branchInstruction +
+                  mutationInstruction,
               tools: [{ functionDeclarations: chatToolDeclarations }],
             },
           });
 
           const modelParts: Part[] = [];
           const functionCalls: FunctionCall[] = [];
-          let roundText = "";
           for await (const chunk of response) {
             const parts = chunk.candidates?.[0]?.content?.parts ?? [];
             modelParts.push(...parts);
             for (const part of parts) {
               if (part.functionCall?.name)
                 functionCalls.push(part.functionCall);
-              if (part.text) roundText += part.text;
+              if (part.text && !part.thought) {
+                assistantText += part.text;
+                controller.enqueue(
+                  encoder.encode(
+                    JSON.stringify({ type: "text", text: part.text }) + "\n",
+                  ),
+                );
+              }
             }
           }
 
           if (!functionCalls.length) {
-            if (roundText) {
-              assistantText += roundText;
-              controller.enqueue(
-                encoder.encode(
-                  JSON.stringify({ type: "text", text: roundText }) + "\n",
-                ),
-              );
-            }
+            completedResponse = true;
             break;
           }
 
@@ -231,6 +246,7 @@ export const createChatStream = async ({
               const output = await executeChatTool(name, call.args ?? {}, {
                 reviewId,
                 userId,
+                requestedBranch,
               });
               functionResponses.push({
                 functionResponse: { id: call.id, name, response: { output } },
@@ -265,8 +281,13 @@ export const createChatStream = async ({
                 const approvalMessage =
                   name === "apply_patch"
                     ? "The proposed changes are waiting for your explicit approval."
-                    : "The branch creation is waiting for your explicit approval.";
-                assistantText = approvalMessage;
+                    : name === "commit_changes"
+                      ? "The commit is waiting for your explicit approval."
+                      : name === "create_pull_request"
+                        ? "The pull request creation is waiting for your explicit approval."
+                        : "The branch creation is waiting for your explicit approval.";
+                assistantText += approvalMessage;
+                completedResponse = true;
                 controller.enqueue(
                   encoder.encode(
                     JSON.stringify({ type: "text", text: approvalMessage }) +
@@ -289,7 +310,7 @@ export const createChatStream = async ({
                 type: "tool",
                 id: activityId,
                 name,
-                label: `Unable to use ${label}`,
+                label: `Unable to use ${label}: ${message.slice(0, 120)}`,
                 status: "failed",
               });
             }
@@ -297,7 +318,15 @@ export const createChatStream = async ({
           contents.push({ role: "user", parts: functionResponses });
         }
 
-        if (!assistantText) throw new Error("Failed to generate AI response");
+        if (!completedResponse) {
+          assistantText =
+            "I could not complete that tool-assisted request. Please retry with the exact repository-relative file path.";
+          controller.enqueue(
+            encoder.encode(
+              JSON.stringify({ type: "text", text: assistantText }) + "\n",
+            ),
+          );
+        }
 
         await prisma.conversationMessage.create({
           data: { reviewId, message: assistantText, role: "ASSISTANT" },
