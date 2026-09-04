@@ -33,6 +33,7 @@ export function ReviewChat({ reviewId }: { reviewId: string }) {
   const [input, setInput] = useState("");
   const [panelWidth, setPanelWidth] = useState(448);
   const [isResizing, setIsResizing] = useState(false);
+  const isSubmittingRef = useRef(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const chatQuery = useReviewChat(reviewId, open);
   const sendMessageMutation = useSendReviewChatMessage(reviewId);
@@ -65,9 +66,14 @@ export function ReviewChat({ reviewId }: { reviewId: string }) {
   const submitMessage = (event?: FormEvent) => {
     event?.preventDefault();
     const message = input.trim();
-    if (!message || sendMessageMutation.isPending) return;
+    if (!message || sendMessageMutation.isPending || isSubmittingRef.current)
+      return;
+    isSubmittingRef.current = true;
     setInput("");
-    sendMessageMutation.mutate({ message });
+    sendMessageMutation.mutate(
+      { message },
+      { onSettled: () => (isSubmittingRef.current = false) },
+    );
   };
 
   return (
@@ -184,7 +190,8 @@ export function ReviewChat({ reviewId }: { reviewId: string }) {
             )}
             {approveActionMutation.error && (
               <p className="mb-2 text-sm text-destructive">
-                Unable to approve this action. Please try again.
+                {approveActionMutation.error.message ||
+                  "Unable to approve this action. Please try again."}
               </p>
             )}
             <form onSubmit={submitMessage} className="flex items-end gap-2">
