@@ -392,6 +392,33 @@ export const githubBranchExists = async (
   }
 };
 
+export const createGithubPullRequest = async (
+  token: string,
+  owner: string,
+  repo: string,
+  head: string,
+  base: string,
+  title: string,
+  body: string,
+) => {
+  const octokit = new Octokit({ auth: token });
+  const { data } = await octokit.rest.pulls.create({
+    owner,
+    repo,
+    head,
+    base,
+    title,
+    body,
+  });
+  return {
+    number: data.number,
+    title: data.title,
+    htmlUrl: data.html_url,
+    base,
+    head,
+  };
+};
+
 export const postReviewComment = async (
   token: string,
   owner: string,
