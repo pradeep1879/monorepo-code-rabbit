@@ -2,9 +2,11 @@ import { ArrowRight, CheckCircle2, GitBranch, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { ReviewHistoryReview } from "@/module/review/components/ReviewHistoryTypes";
+import type {
+  ReviewFinding,
+  ReviewHistoryReview,
+} from "@/module/review/components/ReviewHistoryTypes";
 
-const attentionStatus = new Set(["failed", "processing", "pending"]);
 const getSummary = (value: string) =>
   value
     .split("\n")
@@ -18,9 +20,20 @@ export function NeedsAttention({
 }: {
   reviews: ReviewHistoryReview[];
 }) {
-  const items = reviews
-    .filter((review) => attentionStatus.has(review.status))
-    .slice(0, 5);
+  const items: Array<{
+    review: ReviewHistoryReview;
+    finding?: ReviewFinding;
+  }> = [];
+  for (const review of reviews) {
+    const unresolvedFindings =
+      review.findings?.filter((finding) => finding.status !== "resolved") ?? [];
+    if (unresolvedFindings.length) {
+      for (const finding of unresolvedFindings) items.push({ review, finding });
+    } else if (review.status === "failed" || review.status === "processing") {
+      items.push({ review });
+    }
+  }
+  items.splice(5);
   return (
     <Card className="shadow-none">
       <CardHeader>
@@ -28,19 +41,22 @@ export function NeedsAttention({
       </CardHeader>
       <CardContent className="space-y-2">
         {items.length ? (
-          items.map((review) => (
+          items.map(({ review, finding }) => (
             <Link
-              key={review.id}
+              key={`${review.id}-${finding?.id ?? "review"}`}
               href={review.prUrl}
               target="_blank"
               className="flex items-center justify-between gap-3 rounded-lg border border-border/60 p-3 transition-colors hover:bg-muted/40"
             >
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium">
-                  PR #{review.prNumber} · {review.prTitle}
+                  PR #{review.prNumber} · {finding?.title ?? review.prTitle}
                 </p>
                 <p className="mt-1 truncate text-xs text-muted-foreground">
-                  {review.repository.fullName} · {getSummary(review.review)}
+                  {review.repository.fullName} ·{" "}
+                  {finding
+                    ? `${finding.severity} severity · ${finding.status.replace("_", " ")}`
+                    : getSummary(review.review)}
                 </p>
               </div>
               <ArrowRight className="size-4 shrink-0 text-muted-foreground" />
@@ -57,20 +73,36 @@ export function NeedsAttention({
   );
 }
 
-export function ReviewHealth({ reviews }: { reviews: ReviewHistoryReview[] }) {
-  const counts = { completed: 0, processing: 0, failed: 0 };
+export function ReviewHealth({
+  reviews,
+  findings,
+  totalFindings,
+  resolvedFindings,
+}: {
+  reviews: ReviewHistoryReview[];
+  findings: Record<string, number>;
+  totalFindings: number;
+  resolvedFindings: number;
+}) {
+  const counts = { critical: 0, high: 0, medium: 0, low: 0 };
   reviews.forEach((review) => {
-    if (review.status in counts)
-      counts[review.status as keyof typeof counts] += 1;
+    review.findings?.forEach((finding) => {
+      if (finding.severity in counts)
+        counts[finding.severity as keyof typeof counts] += 1;
+    });
   });
+  const displayedCounts = totalFindings ? findings : counts;
+  const resolutionRate = totalFindings
+    ? Math.round((resolvedFindings / totalFindings) * 100)
+    : 0;
   return (
     <Card className="shadow-none">
       <CardHeader>
         <CardTitle>Review health</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="grid grid-cols-3 gap-2">
-          {Object.entries(counts).map(([label, count]) => (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {Object.entries(displayedCounts).map(([label, count]) => (
             <div key={label} className="rounded-lg border border-border/60 p-3">
               <p className="text-xs capitalize text-muted-foreground">
                 {label}
@@ -79,10 +111,11 @@ export function ReviewHealth({ reviews }: { reviews: ReviewHistoryReview[] }) {
             </div>
           ))}
         </div>
-        <p className="text-xs text-muted-foreground">
-          Finding severity and resolution metrics are unavailable because
-          findings are not persisted in the current data model.
-        </p>
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          <span>Total findings: {totalFindings}</span>
+          <span>Resolved: {resolvedFindings}</span>
+          <span>Resolution rate: {resolutionRate}%</span>
+        </div>
       </CardContent>
     </Card>
   );
@@ -145,7 +178,11 @@ export function RepositoryHealth({
       pending: 0,
     };
     current.count += 1;
-    if (attentionStatus.has(review.status)) current.pending += 1;
+    const unresolvedCount =
+      review.findings?.filter((finding) => finding.status !== "resolved")
+        .length ?? 0;
+    current.pending +=
+      unresolvedCount || (review.status === "processing" ? 1 : 0);
     groups.set(review.repository.id, current);
   });
   return (

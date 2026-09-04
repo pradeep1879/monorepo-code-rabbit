@@ -5,14 +5,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 export function DashboardKpiCards({
   repositories,
   openPrs,
-  reviews,
-  pendingReviews,
+  issuesFound,
+  issuesResolved,
   isLoading,
 }: {
   repositories: number;
   openPrs: number;
-  reviews: number;
-  pendingReviews: number;
+  issuesFound: number;
+  issuesResolved: number;
   isLoading: boolean;
 }) {
   const cards = [
@@ -29,15 +29,15 @@ export function DashboardKpiCards({
       icon: GitPullRequest,
     },
     {
-      title: "AI reviews",
-      value: reviews,
-      detail: "Reviews generated",
+      title: "Issues found",
+      value: issuesFound,
+      detail: "Across persisted review findings",
       icon: Sparkles,
     },
     {
-      title: "Pending reviews",
-      value: pendingReviews,
-      detail: "Still processing or awaiting review",
+      title: "Issues resolved",
+      value: issuesResolved,
+      detail: "Marked resolved in reviews",
       icon: ListChecks,
     },
   ];
