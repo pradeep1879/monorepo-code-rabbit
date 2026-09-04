@@ -250,6 +250,7 @@ export type ReviewWhereInput = {
   updatedAt?: Prisma.DateTimeFilter<"Review"> | Date | string
   repository?: Prisma.XOR<Prisma.RepositoryScalarRelationFilter, Prisma.RepositoryWhereInput>
   conversationMessages?: Prisma.ConversationMessageListRelationFilter
+  findings?: Prisma.ReviewFindingListRelationFilter
 }
 
 export type ReviewOrderByWithRelationInput = {
@@ -264,6 +265,7 @@ export type ReviewOrderByWithRelationInput = {
   updatedAt?: Prisma.SortOrder
   repository?: Prisma.RepositoryOrderByWithRelationInput
   conversationMessages?: Prisma.ConversationMessageOrderByRelationAggregateInput
+  findings?: Prisma.ReviewFindingOrderByRelationAggregateInput
 }
 
 export type ReviewWhereUniqueInput = Prisma.AtLeast<{
@@ -281,6 +283,7 @@ export type ReviewWhereUniqueInput = Prisma.AtLeast<{
   updatedAt?: Prisma.DateTimeFilter<"Review"> | Date | string
   repository?: Prisma.XOR<Prisma.RepositoryScalarRelationFilter, Prisma.RepositoryWhereInput>
   conversationMessages?: Prisma.ConversationMessageListRelationFilter
+  findings?: Prisma.ReviewFindingListRelationFilter
 }, "id">
 
 export type ReviewOrderByWithAggregationInput = {
@@ -326,6 +329,7 @@ export type ReviewCreateInput = {
   updatedAt?: Date | string
   repository: Prisma.RepositoryCreateNestedOneWithoutReviewsInput
   conversationMessages?: Prisma.ConversationMessageCreateNestedManyWithoutReviewInput
+  findings?: Prisma.ReviewFindingCreateNestedManyWithoutReviewInput
 }
 
 export type ReviewUncheckedCreateInput = {
@@ -339,6 +343,7 @@ export type ReviewUncheckedCreateInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   conversationMessages?: Prisma.ConversationMessageUncheckedCreateNestedManyWithoutReviewInput
+  findings?: Prisma.ReviewFindingUncheckedCreateNestedManyWithoutReviewInput
 }
 
 export type ReviewUpdateInput = {
@@ -352,6 +357,7 @@ export type ReviewUpdateInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   repository?: Prisma.RepositoryUpdateOneRequiredWithoutReviewsNestedInput
   conversationMessages?: Prisma.ConversationMessageUpdateManyWithoutReviewNestedInput
+  findings?: Prisma.ReviewFindingUpdateManyWithoutReviewNestedInput
 }
 
 export type ReviewUncheckedUpdateInput = {
@@ -365,6 +371,7 @@ export type ReviewUncheckedUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   conversationMessages?: Prisma.ConversationMessageUncheckedUpdateManyWithoutReviewNestedInput
+  findings?: Prisma.ReviewFindingUncheckedUpdateManyWithoutReviewNestedInput
 }
 
 export type ReviewCreateManyInput = {
@@ -511,6 +518,20 @@ export type IntFieldUpdateOperationsInput = {
   divide?: number
 }
 
+export type ReviewCreateNestedOneWithoutFindingsInput = {
+  create?: Prisma.XOR<Prisma.ReviewCreateWithoutFindingsInput, Prisma.ReviewUncheckedCreateWithoutFindingsInput>
+  connectOrCreate?: Prisma.ReviewCreateOrConnectWithoutFindingsInput
+  connect?: Prisma.ReviewWhereUniqueInput
+}
+
+export type ReviewUpdateOneRequiredWithoutFindingsNestedInput = {
+  create?: Prisma.XOR<Prisma.ReviewCreateWithoutFindingsInput, Prisma.ReviewUncheckedCreateWithoutFindingsInput>
+  connectOrCreate?: Prisma.ReviewCreateOrConnectWithoutFindingsInput
+  upsert?: Prisma.ReviewUpsertWithoutFindingsInput
+  connect?: Prisma.ReviewWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ReviewUpdateToOneWithWhereWithoutFindingsInput, Prisma.ReviewUpdateWithoutFindingsInput>, Prisma.ReviewUncheckedUpdateWithoutFindingsInput>
+}
+
 export type ReviewCreateNestedOneWithoutConversationMessagesInput = {
   create?: Prisma.XOR<Prisma.ReviewCreateWithoutConversationMessagesInput, Prisma.ReviewUncheckedCreateWithoutConversationMessagesInput>
   connectOrCreate?: Prisma.ReviewCreateOrConnectWithoutConversationMessagesInput
@@ -535,6 +556,7 @@ export type ReviewCreateWithoutRepositoryInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   conversationMessages?: Prisma.ConversationMessageCreateNestedManyWithoutReviewInput
+  findings?: Prisma.ReviewFindingCreateNestedManyWithoutReviewInput
 }
 
 export type ReviewUncheckedCreateWithoutRepositoryInput = {
@@ -547,6 +569,7 @@ export type ReviewUncheckedCreateWithoutRepositoryInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   conversationMessages?: Prisma.ConversationMessageUncheckedCreateNestedManyWithoutReviewInput
+  findings?: Prisma.ReviewFindingUncheckedCreateNestedManyWithoutReviewInput
 }
 
 export type ReviewCreateOrConnectWithoutRepositoryInput = {
@@ -590,6 +613,74 @@ export type ReviewScalarWhereInput = {
   updatedAt?: Prisma.DateTimeFilter<"Review"> | Date | string
 }
 
+export type ReviewCreateWithoutFindingsInput = {
+  id?: string
+  prNumber: number
+  prTitle: string
+  prUrl: string
+  review: string
+  status?: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  repository: Prisma.RepositoryCreateNestedOneWithoutReviewsInput
+  conversationMessages?: Prisma.ConversationMessageCreateNestedManyWithoutReviewInput
+}
+
+export type ReviewUncheckedCreateWithoutFindingsInput = {
+  id?: string
+  repositoryId: string
+  prNumber: number
+  prTitle: string
+  prUrl: string
+  review: string
+  status?: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  conversationMessages?: Prisma.ConversationMessageUncheckedCreateNestedManyWithoutReviewInput
+}
+
+export type ReviewCreateOrConnectWithoutFindingsInput = {
+  where: Prisma.ReviewWhereUniqueInput
+  create: Prisma.XOR<Prisma.ReviewCreateWithoutFindingsInput, Prisma.ReviewUncheckedCreateWithoutFindingsInput>
+}
+
+export type ReviewUpsertWithoutFindingsInput = {
+  update: Prisma.XOR<Prisma.ReviewUpdateWithoutFindingsInput, Prisma.ReviewUncheckedUpdateWithoutFindingsInput>
+  create: Prisma.XOR<Prisma.ReviewCreateWithoutFindingsInput, Prisma.ReviewUncheckedCreateWithoutFindingsInput>
+  where?: Prisma.ReviewWhereInput
+}
+
+export type ReviewUpdateToOneWithWhereWithoutFindingsInput = {
+  where?: Prisma.ReviewWhereInput
+  data: Prisma.XOR<Prisma.ReviewUpdateWithoutFindingsInput, Prisma.ReviewUncheckedUpdateWithoutFindingsInput>
+}
+
+export type ReviewUpdateWithoutFindingsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  prNumber?: Prisma.IntFieldUpdateOperationsInput | number
+  prTitle?: Prisma.StringFieldUpdateOperationsInput | string
+  prUrl?: Prisma.StringFieldUpdateOperationsInput | string
+  review?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  repository?: Prisma.RepositoryUpdateOneRequiredWithoutReviewsNestedInput
+  conversationMessages?: Prisma.ConversationMessageUpdateManyWithoutReviewNestedInput
+}
+
+export type ReviewUncheckedUpdateWithoutFindingsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  repositoryId?: Prisma.StringFieldUpdateOperationsInput | string
+  prNumber?: Prisma.IntFieldUpdateOperationsInput | number
+  prTitle?: Prisma.StringFieldUpdateOperationsInput | string
+  prUrl?: Prisma.StringFieldUpdateOperationsInput | string
+  review?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  conversationMessages?: Prisma.ConversationMessageUncheckedUpdateManyWithoutReviewNestedInput
+}
+
 export type ReviewCreateWithoutConversationMessagesInput = {
   id?: string
   prNumber: number
@@ -600,6 +691,7 @@ export type ReviewCreateWithoutConversationMessagesInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   repository: Prisma.RepositoryCreateNestedOneWithoutReviewsInput
+  findings?: Prisma.ReviewFindingCreateNestedManyWithoutReviewInput
 }
 
 export type ReviewUncheckedCreateWithoutConversationMessagesInput = {
@@ -612,6 +704,7 @@ export type ReviewUncheckedCreateWithoutConversationMessagesInput = {
   status?: string
   createdAt?: Date | string
   updatedAt?: Date | string
+  findings?: Prisma.ReviewFindingUncheckedCreateNestedManyWithoutReviewInput
 }
 
 export type ReviewCreateOrConnectWithoutConversationMessagesInput = {
@@ -640,6 +733,7 @@ export type ReviewUpdateWithoutConversationMessagesInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   repository?: Prisma.RepositoryUpdateOneRequiredWithoutReviewsNestedInput
+  findings?: Prisma.ReviewFindingUpdateManyWithoutReviewNestedInput
 }
 
 export type ReviewUncheckedUpdateWithoutConversationMessagesInput = {
@@ -652,6 +746,7 @@ export type ReviewUncheckedUpdateWithoutConversationMessagesInput = {
   status?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  findings?: Prisma.ReviewFindingUncheckedUpdateManyWithoutReviewNestedInput
 }
 
 export type ReviewCreateManyRepositoryInput = {
@@ -675,6 +770,7 @@ export type ReviewUpdateWithoutRepositoryInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   conversationMessages?: Prisma.ConversationMessageUpdateManyWithoutReviewNestedInput
+  findings?: Prisma.ReviewFindingUpdateManyWithoutReviewNestedInput
 }
 
 export type ReviewUncheckedUpdateWithoutRepositoryInput = {
@@ -687,6 +783,7 @@ export type ReviewUncheckedUpdateWithoutRepositoryInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   conversationMessages?: Prisma.ConversationMessageUncheckedUpdateManyWithoutReviewNestedInput
+  findings?: Prisma.ReviewFindingUncheckedUpdateManyWithoutReviewNestedInput
 }
 
 export type ReviewUncheckedUpdateManyWithoutRepositoryInput = {
@@ -707,10 +804,12 @@ export type ReviewUncheckedUpdateManyWithoutRepositoryInput = {
 
 export type ReviewCountOutputType = {
   conversationMessages: number
+  findings: number
 }
 
 export type ReviewCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   conversationMessages?: boolean | ReviewCountOutputTypeCountConversationMessagesArgs
+  findings?: boolean | ReviewCountOutputTypeCountFindingsArgs
 }
 
 /**
@@ -730,6 +829,13 @@ export type ReviewCountOutputTypeCountConversationMessagesArgs<ExtArgs extends r
   where?: Prisma.ConversationMessageWhereInput
 }
 
+/**
+ * ReviewCountOutputType without action
+ */
+export type ReviewCountOutputTypeCountFindingsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.ReviewFindingWhereInput
+}
+
 
 export type ReviewSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -743,6 +849,7 @@ export type ReviewSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   updatedAt?: boolean
   repository?: boolean | Prisma.RepositoryDefaultArgs<ExtArgs>
   conversationMessages?: boolean | Prisma.Review$conversationMessagesArgs<ExtArgs>
+  findings?: boolean | Prisma.Review$findingsArgs<ExtArgs>
   _count?: boolean | Prisma.ReviewCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["review"]>
 
@@ -788,6 +895,7 @@ export type ReviewOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
 export type ReviewInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   repository?: boolean | Prisma.RepositoryDefaultArgs<ExtArgs>
   conversationMessages?: boolean | Prisma.Review$conversationMessagesArgs<ExtArgs>
+  findings?: boolean | Prisma.Review$findingsArgs<ExtArgs>
   _count?: boolean | Prisma.ReviewCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type ReviewIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -802,6 +910,7 @@ export type $ReviewPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
   objects: {
     repository: Prisma.$RepositoryPayload<ExtArgs>
     conversationMessages: Prisma.$ConversationMessagePayload<ExtArgs>[]
+    findings: Prisma.$ReviewFindingPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1209,6 +1318,7 @@ export interface Prisma__ReviewClient<T, Null = never, ExtArgs extends runtime.T
   readonly [Symbol.toStringTag]: "PrismaPromise"
   repository<T extends Prisma.RepositoryDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.RepositoryDefaultArgs<ExtArgs>>): Prisma.Prisma__RepositoryClient<runtime.Types.Result.GetResult<Prisma.$RepositoryPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   conversationMessages<T extends Prisma.Review$conversationMessagesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Review$conversationMessagesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ConversationMessagePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  findings<T extends Prisma.Review$findingsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Review$findingsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ReviewFindingPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1669,6 +1779,30 @@ export type Review$conversationMessagesArgs<ExtArgs extends runtime.Types.Extens
   take?: number
   skip?: number
   distinct?: Prisma.ConversationMessageScalarFieldEnum | Prisma.ConversationMessageScalarFieldEnum[]
+}
+
+/**
+ * Review.findings
+ */
+export type Review$findingsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ReviewFinding
+   */
+  select?: Prisma.ReviewFindingSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the ReviewFinding
+   */
+  omit?: Prisma.ReviewFindingOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ReviewFindingInclude<ExtArgs> | null
+  where?: Prisma.ReviewFindingWhereInput
+  orderBy?: Prisma.ReviewFindingOrderByWithRelationInput | Prisma.ReviewFindingOrderByWithRelationInput[]
+  cursor?: Prisma.ReviewFindingWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.ReviewFindingScalarFieldEnum | Prisma.ReviewFindingScalarFieldEnum[]
 }
 
 /**

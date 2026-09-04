@@ -54,6 +54,7 @@ export const ModelName = {
   User: 'User',
   Repository: 'Repository',
   Review: 'Review',
+  ReviewFinding: 'ReviewFinding',
   ConversationMessage: 'ConversationMessage',
   AgentApproval: 'AgentApproval',
   UserUsage: 'UserUsage',
@@ -126,6 +127,25 @@ export const ReviewScalarFieldEnum = {
 } as const
 
 export type ReviewScalarFieldEnum = (typeof ReviewScalarFieldEnum)[keyof typeof ReviewScalarFieldEnum]
+
+
+export const ReviewFindingScalarFieldEnum = {
+  id: 'id',
+  reviewId: 'reviewId',
+  title: 'title',
+  description: 'description',
+  severity: 'severity',
+  category: 'category',
+  filePath: 'filePath',
+  lineStart: 'lineStart',
+  lineEnd: 'lineEnd',
+  status: 'status',
+  resolvedAt: 'resolvedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ReviewFindingScalarFieldEnum = (typeof ReviewFindingScalarFieldEnum)[keyof typeof ReviewFindingScalarFieldEnum]
 
 
 export const ConversationMessageScalarFieldEnum = {

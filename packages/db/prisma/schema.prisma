@@ -75,11 +75,35 @@ model Review {
 
   repository             Repository    @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
   conversationMessages   ConversationMessage[]
+  findings               ReviewFinding[]
 
   @@index([repositoryId])
   @@map("review")
 
 }
+
+model ReviewFinding {
+  id          String    @id @default(cuid())
+  reviewId    String
+  title       String
+  description String    @db.Text
+  severity    String    @default("medium")
+  category    String?
+  filePath    String?
+  lineStart   Int?
+  lineEnd     Int?
+  status      String    @default("open")
+  resolvedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  review      Review    @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@index([reviewId, status])
+  @@index([severity])
+  @@map("review_finding")
+}
+
 model ConversationMessage {
   id                String        @id     @default(uuid())
   reviewId          String

@@ -33,6 +33,11 @@ export type Repository = Prisma.RepositoryModel
  */
 export type Review = Prisma.ReviewModel
 /**
+ * Model ReviewFinding
+ * 
+ */
+export type ReviewFinding = Prisma.ReviewFindingModel
+/**
  * Model ConversationMessage
  * 
  */
