@@ -10,6 +10,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { Octokit } from "octokit";
 import { prisma } from "@repo/db";
+import { backfillMissingReviewFindings } from "@/module/review/lib/persist-findings";
 
 export async function middleware(req: NextRequest) {
   const token = req.cookies.get("session");
@@ -72,6 +73,7 @@ export const getDashboardStats = async () => {
     if (!session?.user) {
       throw new Error("Unauthorized");
     }
+    await backfillMissingReviewFindings(session.user.id);
     const token = await getGithubAccesstoken();
     const octokit = new Octokit({
       auth: token,
@@ -79,7 +81,15 @@ export const getDashboardStats = async () => {
 
     const { data: user } = await octokit.rest.users.getAuthenticated();
 
-    const [calendar, prsResponse, totalRepo, totalReviews] = await Promise.all([
+    const [
+      calendar,
+      prsResponse,
+      totalRepo,
+      totalReviews,
+      totalFindings,
+      resolvedFindings,
+      severityGroups,
+    ] = await Promise.all([
       fetchUserContribution(token, user.login),
       octokit.rest.search.issuesAndPullRequests({
         q: `author:${user.login} type:pr`,
@@ -89,17 +99,44 @@ export const getDashboardStats = async () => {
       prisma.review.count({
         where: { repository: { userId: session.user.id } },
       }),
+      prisma.reviewFinding.count({
+        where: { review: { repository: { userId: session.user.id } } },
+      }),
+      prisma.reviewFinding.count({
+        where: {
+          status: "resolved",
+          review: { repository: { userId: session.user.id } },
+        },
+      }),
+      prisma.reviewFinding.groupBy({
+        by: ["severity"],
+        where: { review: { repository: { userId: session.user.id } } },
+        _count: { _all: true },
+      }),
     ]);
 
     const totalCommits = calendar?.totalContributions || 0;
 
     const totalPrs = prsResponse.data.total_count || 0;
 
+    const findingSeverities = {
+      critical: 0,
+      high: 0,
+      medium: 0,
+      low: 0,
+    } as Record<string, number>;
+    severityGroups.forEach((group) => {
+      findingSeverities[group.severity] = group._count._all;
+    });
+
     return {
       totalCommits,
       totalPrs,
       totalReviews,
       totalRepo,
+      totalFindings,
+      resolvedFindings,
+      findingSeverities,
     };
   } catch (error) {
     console.error("Dashbord Stats Error:", error);
@@ -109,6 +146,9 @@ export const getDashboardStats = async () => {
       totalPrs: 0,
       totalReviews: 0,
       totalRepo: 0,
+      totalFindings: 0,
+      resolvedFindings: 0,
+      findingSeverities: {},
     };
   }
 };
