@@ -390,6 +390,7 @@ export const ModelName = {
   ReviewFinding: 'ReviewFinding',
   ConversationMessage: 'ConversationMessage',
   AgentApproval: 'AgentApproval',
+  ChatWorkflow: 'ChatWorkflow',
   UserUsage: 'UserUsage',
   Session: 'Session',
   Account: 'Account',
@@ -409,7 +410,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "repository" | "review" | "reviewFinding" | "conversationMessage" | "agentApproval" | "userUsage" | "session" | "account" | "verification"
+    modelProps: "user" | "repository" | "review" | "reviewFinding" | "conversationMessage" | "agentApproval" | "chatWorkflow" | "userUsage" | "session" | "account" | "verification"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -857,6 +858,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    ChatWorkflow: {
+      payload: Prisma.$ChatWorkflowPayload<ExtArgs>
+      fields: Prisma.ChatWorkflowFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ChatWorkflowFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ChatWorkflowPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ChatWorkflowFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ChatWorkflowPayload>
+        }
+        findFirst: {
+          args: Prisma.ChatWorkflowFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ChatWorkflowPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ChatWorkflowFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ChatWorkflowPayload>
+        }
+        findMany: {
+          args: Prisma.ChatWorkflowFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ChatWorkflowPayload>[]
+        }
+        create: {
+          args: Prisma.ChatWorkflowCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ChatWorkflowPayload>
+        }
+        createMany: {
+          args: Prisma.ChatWorkflowCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ChatWorkflowCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ChatWorkflowPayload>[]
+        }
+        delete: {
+          args: Prisma.ChatWorkflowDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ChatWorkflowPayload>
+        }
+        update: {
+          args: Prisma.ChatWorkflowUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ChatWorkflowPayload>
+        }
+        deleteMany: {
+          args: Prisma.ChatWorkflowDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ChatWorkflowUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ChatWorkflowUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ChatWorkflowPayload>[]
+        }
+        upsert: {
+          args: Prisma.ChatWorkflowUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ChatWorkflowPayload>
+        }
+        aggregate: {
+          args: Prisma.ChatWorkflowAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateChatWorkflow>
+        }
+        groupBy: {
+          args: Prisma.ChatWorkflowGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ChatWorkflowGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ChatWorkflowCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ChatWorkflowCountAggregateOutputType> | number
+        }
+      }
+    }
     UserUsage: {
       payload: Prisma.$UserUsagePayload<ExtArgs>
       fields: Prisma.UserUsageFieldRefs
@@ -1287,6 +1362,20 @@ export const AgentApprovalScalarFieldEnum = {
 export type AgentApprovalScalarFieldEnum = (typeof AgentApprovalScalarFieldEnum)[keyof typeof AgentApprovalScalarFieldEnum]
 
 
+export const ChatWorkflowScalarFieldEnum = {
+  id: 'id',
+  reviewId: 'reviewId',
+  userId: 'userId',
+  message: 'message',
+  status: 'status',
+  lastTool: 'lastTool',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ChatWorkflowScalarFieldEnum = (typeof ChatWorkflowScalarFieldEnum)[keyof typeof ChatWorkflowScalarFieldEnum]
+
+
 export const UserUsageScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
@@ -1610,6 +1699,7 @@ export type GlobalOmitConfig = {
   reviewFinding?: Prisma.ReviewFindingOmit
   conversationMessage?: Prisma.ConversationMessageOmit
   agentApproval?: Prisma.AgentApprovalOmit
+  chatWorkflow?: Prisma.ChatWorkflowOmit
   userUsage?: Prisma.UserUsageOmit
   session?: Prisma.SessionOmit
   account?: Prisma.AccountOmit

@@ -48,6 +48,11 @@ export type ConversationMessage = Prisma.ConversationMessageModel
  */
 export type AgentApproval = Prisma.AgentApprovalModel
 /**
+ * Model ChatWorkflow
+ * 
+ */
+export type ChatWorkflow = Prisma.ChatWorkflowModel
+/**
  * Model UserUsage
  * 
  */

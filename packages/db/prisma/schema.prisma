@@ -76,6 +76,7 @@ model Review {
   repository             Repository    @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
   conversationMessages   ConversationMessage[]
   findings               ReviewFinding[]
+  chatWorkflows          ChatWorkflow[]
 
   @@index([repositoryId])
   @@map("review")
@@ -131,6 +132,22 @@ model AgentApproval {
 
   @@index([userId, reviewId, status])
   @@map("agent_approval")
+}
+
+model ChatWorkflow {
+  id          String   @id @default(cuid())
+  reviewId    String
+  userId      String
+  message     String   @db.Text
+  status      String   @default("running")
+  lastTool    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  review      Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@index([reviewId, userId, status])
+  @@map("chat_workflow")
 }
 
 enum ConversationRole {

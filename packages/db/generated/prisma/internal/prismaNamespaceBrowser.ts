@@ -57,6 +57,7 @@ export const ModelName = {
   ReviewFinding: 'ReviewFinding',
   ConversationMessage: 'ConversationMessage',
   AgentApproval: 'AgentApproval',
+  ChatWorkflow: 'ChatWorkflow',
   UserUsage: 'UserUsage',
   Session: 'Session',
   Account: 'Account',
@@ -172,6 +173,20 @@ export const AgentApprovalScalarFieldEnum = {
 } as const
 
 export type AgentApprovalScalarFieldEnum = (typeof AgentApprovalScalarFieldEnum)[keyof typeof AgentApprovalScalarFieldEnum]
+
+
+export const ChatWorkflowScalarFieldEnum = {
+  id: 'id',
+  reviewId: 'reviewId',
+  userId: 'userId',
+  message: 'message',
+  status: 'status',
+  lastTool: 'lastTool',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ChatWorkflowScalarFieldEnum = (typeof ChatWorkflowScalarFieldEnum)[keyof typeof ChatWorkflowScalarFieldEnum]
 
 
 export const UserUsageScalarFieldEnum = {
