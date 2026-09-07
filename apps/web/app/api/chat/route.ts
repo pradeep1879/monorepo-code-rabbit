@@ -22,6 +22,8 @@ export async function POST(request: Request) {
     const body = (await request.json()) as {
       message?: unknown;
       reviewId?: unknown;
+      continueWorkflow?: unknown;
+      workflowId?: unknown;
     };
     if (typeof body.message !== "string" || typeof body.reviewId !== "string") {
       return NextResponse.json({ error: "Invalid request" }, { status: 400 });
@@ -31,6 +33,9 @@ export async function POST(request: Request) {
       message: body.message,
       reviewId: body.reviewId,
       userId: session.user.id,
+      persistUserMessage: body.continueWorkflow !== true,
+      workflowId:
+        typeof body.workflowId === "string" ? body.workflowId : undefined,
     });
 
     return new Response(stream, {
@@ -87,9 +92,32 @@ export async function PATCH(request: Request) {
     };
     if (typeof body.approvalId !== "string")
       return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+    if (body.toolName === "resume_workflow") {
+      const workflow = await prisma.chatWorkflow.findFirst({
+        where: {
+          id: body.approvalId,
+          userId: session.user.id,
+          status: { in: ["running", "waiting"] },
+        },
+      });
+      if (!workflow)
+        return NextResponse.json({ error: "WORKFLOW_NOT_FOUND" }, { status: 404 });
+      if (Date.now() - workflow.updatedAt.getTime() < 15_000)
+        return NextResponse.json(
+          { error: "WORKFLOW_STILL_RUNNING" },
+          { status: 409 },
+        );
+      return NextResponse.json({
+        continuation: {
+          reviewId: workflow.reviewId,
+          workflowId: workflow.id,
+          message: `Resume the interrupted workflow. Continue only the actions explicitly requested in the original request. Original request: ${workflow.message.slice(0, 3400)}`,
+        },
+      });
+    }
     const approval = await prisma.agentApproval.findFirst({
       where: { id: body.approvalId, userId: session.user.id },
-      select: { toolName: true },
+      select: { toolName: true, reviewId: true, payload: true },
     });
     if (!approval)
       return NextResponse.json({ error: "APPROVAL_EXPIRED" }, { status: 409 });
@@ -106,7 +134,28 @@ export async function PATCH(request: Request) {
               : (() => {
                   throw new Error("UNKNOWN_APPROVAL_TOOL");
                 })();
-    return NextResponse.json(result);
+    const payload = approval.payload as {
+      workflowMessage?: unknown;
+      workflowId?: unknown;
+    };
+    const workflowMessage =
+      typeof payload.workflowMessage === "string" && payload.workflowMessage.trim()
+        ? payload.workflowMessage.trim()
+        : undefined;
+    const workflowId =
+      typeof payload.workflowId === "string" && payload.workflowId.trim()
+        ? payload.workflowId
+        : undefined;
+    return NextResponse.json({
+      ...result,
+      continuation: workflowMessage
+        ? {
+            reviewId: approval.reviewId,
+            workflowId,
+            message: `Continue the same workflow after the approved ${toolName} action. The approved action has completed successfully. Use its result as the source of truth and perform only the remaining actions explicitly requested in the original request. Original request: ${workflowMessage.slice(0, 3400)}`,
+          }
+        : undefined,
+    });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Internal server error";
