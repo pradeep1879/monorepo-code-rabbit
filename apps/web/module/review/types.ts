@@ -8,7 +8,12 @@ export type ConversationMessage = {
     name: string;
     label: string;
     status: "running" | "completed" | "failed" | "waiting_for_approval";
-    action?: { approvalId: string; label: string; toolName?: string };
+    action?: {
+      approvalId: string;
+      label: string;
+      toolName?: string;
+      workflowId?: string;
+    };
   };
 };
 
