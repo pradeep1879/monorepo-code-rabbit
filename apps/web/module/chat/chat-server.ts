@@ -2,6 +2,10 @@ import { ai } from "@/lib/gemini";
 import { prisma } from "@repo/db";
 import type { Content, FunctionCall, Part } from "@google/genai";
 import {
+  getGithubAccesstoken,
+  githubBranchExists,
+} from "@/module/github/lib/github";
+import {
   chatToolDeclarations,
   executeChatTool,
   type ChatToolEvent,
@@ -50,6 +54,7 @@ const getReviewForUser = async (reviewId: string, userId: string) =>
       prTitle: true,
       prUrl: true,
       review: true,
+      repository: { select: { owner: true, name: true } },
     },
   });
 
@@ -66,7 +71,7 @@ export const getChatMessagesForUser = async (
 ) => {
   const review = await getReviewForUser(reviewId, userId);
   if (!review) throw new Error("Review not found");
-  const [messages, pendingApprovals] = await Promise.all([
+  const [messages, pendingApprovals, workflows] = await Promise.all([
     prisma.conversationMessage.findMany({
       where: { reviewId },
       orderBy: { createdAt: "asc" },
@@ -81,6 +86,16 @@ export const getChatMessagesForUser = async (
       },
       orderBy: { createdAt: "asc" },
       select: { id: true, toolName: true },
+    }),
+    prisma.chatWorkflow.findMany({
+      where: {
+        reviewId,
+        userId,
+        status: { in: ["running", "waiting"] },
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 1,
+      select: { id: true, status: true, lastTool: true, updatedAt: true },
     }),
   ]);
 
@@ -98,7 +113,7 @@ export const getChatMessagesForUser = async (
         name: approval.toolName,
         label: "Approval required",
         status: "waiting_for_approval" as const,
-        action: {
+      action: {
           approvalId: approval.id,
           label:
             approval.toolName === "apply_patch"
@@ -112,6 +127,29 @@ export const getChatMessagesForUser = async (
         },
       },
     })),
+    ...workflows
+      .filter(
+        (workflow) =>
+          !pendingApprovals.length &&
+          Date.now() - workflow.updatedAt.getTime() > 15_000,
+      )
+      .map((workflow) => ({
+        id: `workflow-${workflow.id}`,
+        role: "ASSISTANT" as const,
+        message: "",
+        kind: "activity" as const,
+        activity: {
+          name: workflow.lastTool ?? "workflow",
+          label: "Workflow interrupted. Resume to continue.",
+          status: "waiting_for_approval" as const,
+          action: {
+            approvalId: workflow.id,
+            label: "Resume workflow",
+            toolName: "resume_workflow",
+            workflowId: workflow.id,
+          },
+        },
+      })),
   ];
 };
 
@@ -119,10 +157,14 @@ export const createChatStream = async ({
   message,
   reviewId,
   userId,
+  persistUserMessage = true,
+  workflowId,
 }: {
   message: string;
   reviewId: string;
   userId: string;
+  persistUserMessage?: boolean;
+  workflowId?: string;
 }) => {
   const trimmedMessage = message.trim();
   if (!trimmedMessage || trimmedMessage.length > 4000) {
@@ -131,24 +173,68 @@ export const createChatStream = async ({
 
   const review = await getReviewForUser(reviewId, userId);
   if (!review) throw new Error("Review not found");
+  const workflow = workflowId
+    ? await prisma.chatWorkflow.findFirst({
+        where: { id: workflowId, reviewId, userId },
+      })
+    : persistUserMessage
+      ? await prisma.chatWorkflow.create({
+          data: { reviewId, userId, message: trimmedMessage },
+        })
+      : (await prisma.chatWorkflow.findFirst({
+          where: {
+            reviewId,
+            userId,
+            status: { in: ["running", "waiting"] },
+          },
+          orderBy: { updatedAt: "desc" },
+        })) ??
+        (await prisma.chatWorkflow.create({
+          data: { reviewId, userId, message: trimmedMessage },
+        }));
+  if (!workflow) throw new Error("Workflow not found");
+  await prisma.chatWorkflow.update({
+    where: { id: workflow.id },
+    data: { status: "running" },
+  });
   const approvedBranch = await prisma.agentApproval.findFirst({
     where: { reviewId, userId, toolName: "create_branch", status: "consumed" },
     orderBy: { consumedAt: "desc" },
     select: { payload: true },
   });
-  const branchPayload = approvedBranch?.payload as
+  const storedBranchPayload = approvedBranch?.payload as
     | { branchName?: string }
     | undefined;
-  const requestedBranch = trimmedMessage.match(
-    /\bbranch(?:\s+named)?\s+["'`]?((?:ai\/)[A-Za-z0-9._/-]{1,79})/i,
-  )?.[1];
+  const storedBranch = storedBranchPayload?.branchName;
+  const branchExists = storedBranch
+    ? await getGithubAccesstoken()
+        .then((token) =>
+          githubBranchExists(
+            token,
+            review.repository.owner,
+            review.repository.name,
+            storedBranch,
+          ),
+        )
+        .catch(() => false)
+    : false;
+  const branchPayload = branchExists ? storedBranchPayload : undefined;
+  const requestedBranchMatch = trimmedMessage.match(
+    /\bbranch\s+(?:(?:named|called)\s+)?["'`]((?:[A-Za-z0-9._/-]){1,79})["'`]|\bbranch\s+(?:named|called)\s+([A-Za-z0-9._/-]{1,79})|\bbranch\s+(ai\/[A-Za-z0-9._/-]{1,79})/i,
+  );
+  const requestedBranch =
+    requestedBranchMatch?.[1] ??
+    requestedBranchMatch?.[2] ??
+    requestedBranchMatch?.[3];
 
-  await prisma.conversationMessage.create({
-    data: { reviewId, message: trimmedMessage, role: "USER" },
-  });
+  if (persistUserMessage)
+    await prisma.conversationMessage.create({
+      data: { reviewId, message: trimmedMessage, role: "USER" },
+    });
 
-  const history: Content[] = (await getConversation(reviewId))
-    .slice(0, -1)
+  const conversation = await getConversation(reviewId);
+  const history: Content[] = conversation
+    .slice(0, persistUserMessage ? -1 : undefined)
     .map((item) => ({
       role: item.role === "USER" ? ("user" as const) : ("model" as const),
       parts: [{ text: item.message }],
@@ -176,6 +262,8 @@ export const createChatStream = async ({
         : "No working branch has been approved yet. Request create_branch only when the user explicitly asks for a new branch.";
   const mutationInstruction =
     "For commit requests, first use get_file on the approved branch, then call commit_changes with the exact current SHA, complete updated file content, and a concise commit message. For pull request requests, use create_pull_request with the approved head branch and the original PR base branch. Both tools pause for explicit approval; never report success before approval.";
+  const missingBranchInstruction =
+    "If a mutation tool returns WORKING_BRANCH_REQUIRED, do not retry apply_patch, commit_changes, or create_pull_request on the missing branch. Explain that the previously approved branch no longer exists, and ask the user to explicitly provide a new branch name or ask you to create one. Only call create_branch after that explicit request; wait for its approval before continuing.";
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       let assistantText = "";
@@ -200,7 +288,8 @@ export const createChatStream = async ({
                 systemInstruction +
                   patchInstruction +
                   branchInstruction +
-                  mutationInstruction,
+                  mutationInstruction +
+                  missingBranchInstruction,
               tools: [{ functionDeclarations: chatToolDeclarations }],
             },
           });
@@ -225,6 +314,10 @@ export const createChatStream = async ({
           }
 
           if (!functionCalls.length) {
+            await prisma.chatWorkflow.update({
+              where: { id: workflow.id },
+              data: { status: "completed" },
+            });
             completedResponse = true;
             break;
           }
@@ -247,6 +340,10 @@ export const createChatStream = async ({
                 reviewId,
                 userId,
                 requestedBranch,
+                workflowMessage: persistUserMessage
+                  ? trimmedMessage
+                  : workflow.message,
+                workflowId: workflow.id,
               });
               functionResponses.push({
                 functionResponse: { id: call.id, name, response: { output } },
@@ -266,6 +363,10 @@ export const createChatStream = async ({
                 approvalOutput.approvalRequired &&
                 approvalOutput.approvalId
               ) {
+                await prisma.chatWorkflow.update({
+                  where: { id: workflow.id },
+                  data: { status: "waiting", lastTool: name },
+                });
                 sendEvent({
                   type: "tool",
                   id: activityId,
@@ -333,6 +434,12 @@ export const createChatStream = async ({
         });
         controller.close();
       } catch (error) {
+        await prisma.chatWorkflow
+          .update({
+            where: { id: workflow.id },
+            data: { status: "failed" },
+          })
+          .catch(() => undefined);
         const message = getSafeAgentError(error);
         controller.enqueue(
           encoder.encode(JSON.stringify({ type: "error", message }) + "\n"),

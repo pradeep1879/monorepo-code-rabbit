@@ -30,6 +30,8 @@ type ToolContext = {
   reviewId: string;
   userId: string;
   requestedBranch?: string;
+  workflowMessage?: string;
+  workflowId?: string;
 };
 type ToolArgs = Record<string, unknown>;
 
@@ -195,6 +197,43 @@ const safeBranchName = (value: string) => {
   return value;
 };
 
+const createOrReuseApproval = async ({
+  userId,
+  reviewId,
+  toolName,
+  payload,
+}: {
+  userId: string;
+  reviewId: string;
+  toolName: string;
+  payload: Record<string, unknown>;
+}) => {
+  const pending = await prisma.agentApproval.findMany({
+    where: {
+      userId,
+      reviewId,
+      toolName,
+      status: "pending",
+      expiresAt: { gt: new Date() },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+  const serialized = JSON.stringify(payload);
+  const existing = pending.find(
+    (approval) => JSON.stringify(approval.payload) === serialized,
+  );
+  if (existing) return existing;
+  return prisma.agentApproval.create({
+    data: {
+      userId,
+      reviewId,
+      toolName,
+      payload: payload as unknown as import("@repo/db").Prisma.InputJsonValue,
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+    },
+  });
+};
+
 const getReviewContext = (context: ToolContext) =>
   prisma.review.findFirst({
     where: { id: context.reviewId, repository: { userId: context.userId } },
@@ -206,7 +245,12 @@ const getReviewContext = (context: ToolContext) =>
     },
   });
 
-const getApprovedBranch = async (context: ToolContext) => {
+const getApprovedBranch = async (
+  context: ToolContext,
+  token: string,
+  owner: string,
+  repo: string,
+) => {
   const approval = await prisma.agentApproval.findFirst({
     where: {
       reviewId: context.reviewId,
@@ -222,6 +266,11 @@ const getApprovedBranch = async (context: ToolContext) => {
     typeof payload?.branchName === "string" && payload.branchName.trim()
       ? safeBranchName(payload.branchName.trim())
       : undefined;
+  if (
+    approvedBranch &&
+    !(await githubBranchExists(token, owner, repo, approvedBranch))
+  )
+    return undefined;
   if (
     context.requestedBranch &&
     approvedBranch &&
@@ -268,7 +317,12 @@ export const executeChatTool = async (
         typeof args.path === "string" && args.path.trim()
           ? args.path.trim()
           : requireString(args, "filePath");
-      const branchName = await getApprovedBranch(context);
+      const branchName = await getApprovedBranch(
+        context,
+        token,
+        review.repository.owner,
+        review.repository.name,
+      );
       if (branchName) {
         const file = await getGithubFile(
           token,
@@ -299,14 +353,23 @@ export const executeChatTool = async (
           }
         : { path, content: "File not found" };
     }
-    case "search_code":
+    case "search_code": {
+      const query = requireString(args, "query");
+      if (/^https?:\/\//i.test(query))
+        return {
+          skipped: true,
+          results: [],
+          message:
+            "Search was skipped because the query is a URL. Search code using a symbol or text from the repository instead.",
+        };
       return searchGithubCode(
         token,
-        requireString(args, "query"),
+        query,
         typeof args.repository === "string"
           ? args.repository
           : review.repository.fullName,
       );
+    }
     case "get_review":
       return {
         prNumber: review.prNumber,
@@ -316,7 +379,12 @@ export const executeChatTool = async (
     case "propose_patch": {
       const filePath = requireSafePath(args);
       const instruction = requireString(args, "instruction");
-      const branchName = await getApprovedBranch(context);
+      const branchName = await getApprovedBranch(
+        context,
+        token,
+        review.repository.owner,
+        review.repository.name,
+      );
       const [file, pullRequest] = await Promise.all([
         getGithubFile(
           token,
@@ -370,18 +438,17 @@ export const executeChatTool = async (
         )
       )
         throw new Error("BRANCH_ALREADY_EXISTS");
-      const approval = await prisma.agentApproval.create({
-        data: {
-          userId: context.userId,
-          reviewId: context.reviewId,
-          toolName: name,
-          payload: {
-            owner: review.repository.owner,
-            repo: review.repository.name,
-            baseBranch: pullRequest.base,
-            branchName,
-          },
-          expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+      const approval = await createOrReuseApproval({
+        userId: context.userId,
+        reviewId: context.reviewId,
+        toolName: name,
+        payload: {
+          owner: review.repository.owner,
+          repo: review.repository.name,
+          baseBranch: pullRequest.base,
+          branchName,
+            workflowMessage: context.workflowMessage,
+            workflowId: context.workflowId,
         },
       });
       return {
@@ -408,6 +475,14 @@ export const executeChatTool = async (
         ["main", "master", "production"].includes(branchName)
       )
         throw new Error("Protected branch cannot be modified");
+      const approvedBranch = await getApprovedBranch(
+        context,
+        token,
+        review.repository.owner,
+        review.repository.name,
+      );
+      if (!approvedBranch || approvedBranch !== branchName)
+        throw new Error("WORKING_BRANCH_REQUIRED");
       const file = await getGithubFile(
         token,
         review.repository.owner,
@@ -422,20 +497,19 @@ export const executeChatTool = async (
         !patch.includes("+++ ")
       )
         throw new Error("PATCH_INVALID");
-      const approval = await prisma.agentApproval.create({
-        data: {
-          userId: context.userId,
-          reviewId: context.reviewId,
-          toolName: name,
-          payload: {
-            owner: review.repository.owner,
-            repo: review.repository.name,
-            branchName,
-            filePath,
-            expectedFileSha,
-            patch,
-          },
-          expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+      const approval = await createOrReuseApproval({
+        userId: context.userId,
+        reviewId: context.reviewId,
+        toolName: name,
+        payload: {
+          owner: review.repository.owner,
+          repo: review.repository.name,
+          branchName,
+          filePath,
+          expectedFileSha,
+          patch,
+            workflowMessage: context.workflowMessage,
+            workflowId: context.workflowId,
         },
       });
       return {
@@ -452,9 +526,14 @@ export const executeChatTool = async (
       const expectedFileSha = requireString(args, "expectedFileSha");
       const content = requireString(args, "content");
       const message = requireString(args, "message");
-      const approvedBranch = await getApprovedBranch(context);
+      const approvedBranch = await getApprovedBranch(
+        context,
+        token,
+        review.repository.owner,
+        review.repository.name,
+      );
       if (!approvedBranch || approvedBranch !== branchName)
-        throw new Error("APPROVED_BRANCH_REQUIRED");
+        throw new Error("WORKING_BRANCH_REQUIRED");
       const current = await getGithubFile(
         token,
         review.repository.owner,
@@ -473,6 +552,8 @@ export const executeChatTool = async (
         content,
         expectedFileSha,
         message,
+        workflowMessage: context.workflowMessage,
+        workflowId: context.workflowId,
       });
     }
     case "create_pull_request": {
@@ -480,9 +561,14 @@ export const executeChatTool = async (
       const baseBranch = safeBranchName(requireString(args, "baseBranch"));
       const title = requireString(args, "title");
       const body = typeof args.body === "string" ? args.body.trim() : "";
-      const approvedBranch = await getApprovedBranch(context);
+      const approvedBranch = await getApprovedBranch(
+        context,
+        token,
+        review.repository.owner,
+        review.repository.name,
+      );
       if (!approvedBranch || approvedBranch !== headBranch)
-        throw new Error("APPROVED_BRANCH_REQUIRED");
+        throw new Error("WORKING_BRANCH_REQUIRED");
       const pullRequest = await getPullRequest(
         token,
         review.repository.owner,
@@ -502,6 +588,8 @@ export const executeChatTool = async (
         baseBranch,
         title,
         body,
+        workflowMessage: context.workflowMessage,
+        workflowId: context.workflowId,
       });
     }
     case "get_finding": {
@@ -528,8 +616,7 @@ export const approveCreateBranch = async (
       status: "pending",
     },
   });
-  if (!approval || approval.expiresAt <= new Date())
-    throw new Error("APPROVAL_EXPIRED");
+  if (!approval) throw new Error("APPROVAL_EXPIRED");
   const claimed = await prisma.agentApproval.updateMany({
     where: { id: approval.id, status: "pending" },
     data: { status: "running" },
@@ -584,8 +671,7 @@ export const approveApplyPatch = async (approvalId: string, userId: string) => {
       status: "pending",
     },
   });
-  if (!approval || approval.expiresAt <= new Date())
-    throw new Error("APPROVAL_EXPIRED");
+  if (!approval) throw new Error("APPROVAL_EXPIRED");
   const claimed = await prisma.agentApproval.updateMany({
     where: { id: approval.id, status: "pending" },
     data: { status: "running" },

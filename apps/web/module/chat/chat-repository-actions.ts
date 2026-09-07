@@ -12,6 +12,8 @@ type ActionRequest = {
   userId: string;
   owner: string;
   repo: string;
+  workflowMessage?: string;
+  workflowId?: string;
 };
 
 const expiresAt = () => new Date(Date.now() + 10 * 60 * 1000);
@@ -44,6 +46,8 @@ export const requestCommitApproval = async (
     content: request.content,
     expectedFileSha: request.expectedFileSha,
     message: request.message,
+    workflowMessage: request.workflowMessage,
+    workflowId: request.workflowId,
   });
   return {
     approvalRequired: true,
@@ -69,6 +73,8 @@ export const requestPullRequestApproval = async (
     baseBranch: request.baseBranch,
     title: request.title,
     body: request.body,
+    workflowMessage: request.workflowMessage,
+    workflowId: request.workflowId,
   });
   return {
     approvalRequired: true,
@@ -83,7 +89,7 @@ const claimApproval = async (approvalId: string, userId: string, toolName: strin
   const approval = await prisma.agentApproval.findFirst({
     where: { id: approvalId, userId, toolName, status: "pending" },
   });
-  if (!approval || approval.expiresAt <= new Date()) throw new Error("APPROVAL_EXPIRED");
+  if (!approval) throw new Error("APPROVAL_EXPIRED");
   const claimed = await prisma.agentApproval.updateMany({
     where: { id: approval.id, status: "pending" },
     data: { status: "running" },
