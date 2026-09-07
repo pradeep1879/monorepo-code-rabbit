@@ -24,11 +24,24 @@ export const useSendReviewChatMessage = (reviewId: string) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ message }: { message: string }) => {
+    mutationFn: async ({
+      message,
+      hidden = false,
+      workflowId,
+    }: {
+      message: string;
+      hidden?: boolean;
+      workflowId?: string;
+    }) => {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message, reviewId }),
+        body: JSON.stringify({
+          message,
+          reviewId,
+          continueWorkflow: hidden,
+          workflowId,
+        }),
       });
 
       if (!response.ok) {
@@ -115,18 +128,13 @@ export const useSendReviewChatMessage = (reviewId: string) => {
       applyEvent(buffer);
       return { assistantText, approvalPending };
     },
-    onMutate: async ({ message }) => {
+    onMutate: async ({ message, hidden = false }) => {
       await queryClient.cancelQueries({
         queryKey: reviewChatQueryKey(reviewId),
       });
       const previous = queryClient.getQueryData<ConversationMessage[]>(
         reviewChatQueryKey(reviewId),
       );
-      const userMessage: ConversationMessage = {
-        id: `user-${Date.now()}`,
-        role: "USER",
-        message,
-      };
       const assistantMessage: ConversationMessage = {
         id: "streaming-assistant",
         role: "ASSISTANT",
@@ -134,7 +142,17 @@ export const useSendReviewChatMessage = (reviewId: string) => {
       };
       queryClient.setQueryData<ConversationMessage[]>(
         reviewChatQueryKey(reviewId),
-        (current = []) => [...current, userMessage],
+        (current = []) =>
+          hidden
+            ? current
+            : [
+                ...current,
+                {
+                  id: `user-${Date.now()}`,
+                  role: "USER" as const,
+                  message,
+                },
+              ],
       );
       queryClient.setQueryData<ConversationMessage[]>(
         reviewChatQueryKey(reviewId),
@@ -159,6 +177,7 @@ export const useSendReviewChatMessage = (reviewId: string) => {
 
 export const useApproveChatAction = (reviewId: string) => {
   const queryClient = useQueryClient();
+  const sendContinuation = useSendReviewChatMessage(reviewId);
   return useMutation({
     mutationFn: async ({
       approvalId,
@@ -179,7 +198,7 @@ export const useApproveChatAction = (reviewId: string) => {
         throw new Error(body?.error ?? "Unable to approve action");
       return { approvalId, toolName, result: body };
     },
-    onSuccess: async ({ approvalId, toolName }) => {
+    onSuccess: async ({ approvalId, toolName, result }) => {
       const completedLabel =
         toolName === "apply_patch"
           ? "Changes applied"
@@ -208,6 +227,40 @@ export const useApproveChatAction = (reviewId: string) => {
       await queryClient.invalidateQueries({
         queryKey: reviewChatQueryKey(reviewId),
       });
+      const continuation = result as {
+        continuation?: {
+          message?: string;
+          reviewId?: string;
+          workflowId?: string;
+        };
+      };
+      if (continuation.continuation?.message)
+        await sendContinuation.mutateAsync({
+          message: continuation.continuation.message,
+          hidden: true,
+          workflowId: continuation.continuation.workflowId,
+        });
+    },
+    onError: (error, { approvalId }) => {
+      const message =
+        error instanceof Error ? error.message : "Approval failed";
+      queryClient.setQueryData<ConversationMessage[]>(
+        reviewChatQueryKey(reviewId),
+        (current = []) =>
+          current.map((item) =>
+            item.activity?.action?.approvalId === approvalId
+              ? {
+                  ...item,
+                  activity: {
+                    ...item.activity,
+                    label: `Approval failed: ${message}`,
+                    status: "failed" as const,
+                    action: undefined,
+                  },
+                }
+              : item,
+          ),
+      );
     },
   });
 };
