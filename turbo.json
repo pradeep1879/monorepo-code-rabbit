@@ -6,7 +6,16 @@
     "build": {
       "dependsOn": ["^build", "^db:generate"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": [".next/**", "!.next/cache/**"]
+      "outputs": [".next/**", "!.next/cache/**"],
+      "env": [
+          "BETTER_AUTH_SECRET",
+          "PINECONE_DB_API_KEY",
+          "GOOGLE_GENERATIVE_AI_API_KEY",
+          "HUGGINGFACE_API_KEY",
+          "POLAR_ACCESS_TOKEN",
+          "POLAR_SUCCESS_URL",
+          "POLAR_WEBHOOK_SECRET"
+        ]
     },
     "lint": {
       "dependsOn": ["^lint"]
